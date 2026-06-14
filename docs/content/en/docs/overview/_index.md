@@ -3,7 +3,7 @@ title: "Overview"
 linkTitle: "Overview"
 weight: 1
 description: >
-  What HAProxy Ingress is and how it works.
+  What N42 Gateway is and how it works.
 ---
 
 ## HAProxy
@@ -16,11 +16,11 @@ description: >
 
 > [!INFO] TODO
 >
-> About the Kubernetes' ingress controllers, what HAProxy Ingress watches in the k8s cluster and how it builds HAProxy configuration.
+> About the Kubernetes' ingress controllers, what N42 Gateway watches in the k8s cluster and how it builds HAProxy configuration.
 
 ## Releases
 
-HAProxy Ingress is released as a Docker image on top of Alpine's flavor of
+N42 Gateway is released as a Docker image on top of Alpine's flavor of
 [HAProxy image](https://hub.docker.com/_/haproxy).
 
 To get an overview of the individual releases and to read the changelog per release follow this [link](https://github.com/n42-gateway/n42-gateway/releases).
@@ -37,4 +37,4 @@ a beta-quality or a development version.
 
 ## Where should I go next?
 
-* [Getting Started]({{% relref "/docs/getting-started" %}}): Get started with HAProxy Ingress!
+* [Getting Started]({{% relref "/docs/getting-started" %}}): Get started with N42 Gateway!

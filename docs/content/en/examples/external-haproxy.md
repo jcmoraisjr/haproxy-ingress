@@ -5,17 +5,17 @@ aliases:
 - /docs/examples/external-haproxy
 type: docs
 description: >
-  Demonstrate how to configure HAProxy Ingress to use an external haproxy deployment.
+  Demonstrate how to configure N42 Gateway to use an external haproxy deployment.
 ---
 
-This example demonstrates how to configure HAProxy Ingress to manage an external
+This example demonstrates how to configure N42 Gateway to manage an external
 haproxy instance deployed as a sidecar container. This approach decouple the
 controller and the running haproxy version, allowing the sysadmin to update any
 of them independently of the other.
 
 ## Prerequisites
 
-This document requires only a Kubernetes cluster. HAProxy Ingress doesn't need to be
+This document requires only a Kubernetes cluster. N42 Gateway doesn't need to be
 installed, and if so, the installation process should use the
 [Helm chart]({{% relref "/docs/getting-started#installation" %}}).
 
@@ -48,7 +48,7 @@ drops its own privileges just before starting its event loop. See
 [Security Considerations](https://docs.haproxy.org/2.8/management.html#13) from the documentation.
 
 Since 2.4, haproxy container has been started as UID `99`. There are a few ways to give it
-permissions to bind privileged port, none of them is provided by default by HAProxy Ingress Helm
+permissions to bind privileged port, none of them is provided by default by N42 Gateway Helm
 chart because all of them has some sort of limitation. Choose one of the options below that best
 suits the needs of your environment:
 
@@ -123,11 +123,15 @@ to `:80` and `:443` without the need to run as root. Give it a try by removing t
 
 Add the HAProxy Ingress Helm repository if using HAProxy Ingress' chart for the first time:
 
+> [!INFO] Note
+>
+> N42 Gateway v0.16 uses the HAProxy Ingress branding in Helm configuration
+
 ```
-$ helm repo add haproxy-ingress https://n42-gateway.github.io/charts
+$ helm repo add haproxy-ingress https://haproxy-ingress.github.io/charts
 ```
 
-Install or upgrade HAProxy Ingress using the `haproxy-ingress-values.yaml` parameters:
+Install or upgrade N42 Gateway using the `haproxy-ingress-values.yaml` parameters:
 
 ```
 $ helm upgrade haproxy-ingress haproxy-ingress/haproxy-ingress\
@@ -166,7 +170,7 @@ IP like the example below:
 $ curl 192.168.1.11
 ```
 
-HAProxy Ingress and the external haproxy should be logging their own events:
+N42 Gateway and the external haproxy should be logging their own events:
 
 `haproxy-ingress` container:
 
@@ -204,19 +208,19 @@ This example configures 2 (two) new containers in the controllers' pod:
 
 The `haproxy` container references the official Alpine based image `haproxy:2.3.4-alpine`,
 but can be any other. The only requisite is to be 2.0 or newer due to some new keywords
-used by HAProxy Ingress.
+used by N42 Gateway.
 
 The `init` container just copy a minimum and valid `haproxy.cfg`. This file is used
-to properly starts haproxy and configures its master CLI that HAProxy Ingress uses
+to properly starts haproxy and configures its master CLI that N42 Gateway uses
 to manage the instance.
 
-A new command-line `--master-socket` was also added to the HAProxy Ingress container.
+A new command-line `--master-socket` was also added to the N42 Gateway container.
 This option enables an external haproxy instance, pointing to the unix socket path
 of its master CLI.
 
 ### Shared filesystem
 
-HAProxy Ingress sends configuration files to the haproxy instance using a shared
+N42 Gateway sends configuration files to the haproxy instance using a shared
 filesystem. A Kubernetes' [`emptyDir`](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir)
 works well.
 
@@ -228,6 +232,6 @@ The following directories must be shared:
 
 ### Liveness probe
 
-Default HAProxy Ingress deployment has a liveness probe to an haproxy's health
-check URI. This example changes the liveness probe from the HAProxy Ingress
+Default N42 Gateway deployment has a liveness probe to an haproxy's health
+check URI. This example changes the liveness probe from the N42 Gateway
 container to the haproxy one.

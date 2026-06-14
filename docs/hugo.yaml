@@ -66,10 +66,6 @@ params:
     url: "/v0.14/docs"
   - version: "v0.13"
     url: "/v0.13/docs"
-  - version: "v0.12"
-    url: "/v0.12/docs"
-  - version: "v0.10"
-    url: "/v0.10/docs"
   links:
     user:
     - name: "Slack"

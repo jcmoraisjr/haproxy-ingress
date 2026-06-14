@@ -6,13 +6,13 @@ description: >
   Configure HAProxy using Gateway API resources.
 ---
 
-[Gateway API](https://gateway-api.sigs.k8s.io/) is a collection of Kubernetes resources that can be installed as [Custom Resource Definitions](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/). Just like Ingress resources, Gateway API resources are used to configure incoming HTTP/s and TCP requests to the in cluster applications. HAProxy Ingress v0.15 partially supports the Gateway API spec, `v1alpha2`, `v1beta1` and `v1` versions.
+[Gateway API](https://gateway-api.sigs.k8s.io/) is a collection of Kubernetes resources that can be installed as [Custom Resource Definitions](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/). Just like Ingress resources, Gateway API resources are used to configure incoming HTTP/s and TCP requests to the in cluster applications. N42 Gateway v0.16 partially supports the Gateway API spec, `v1alpha2`, `v1beta1` and `v1` versions.
 
 ## Installation
 
-The following steps configure the Kubernetes cluster and HAProxy Ingress to read and parse Gateway API resources:
+The following steps configure the Kubernetes cluster and N42 Gateway to read and parse Gateway API resources:
 
-* Manually install the Gateway API CRDs from the experimental channel - HAProxy Ingress supports TCPRoute which is not included in the standard channel. See the Gateway API [documentation](https://gateway-api.sigs.k8s.io/guides/#installing-gateway-api)
+* Manually install the Gateway API CRDs from the experimental channel - N42 Gateway supports TCPRoute which is not included in the standard channel. See the Gateway API [documentation](https://gateway-api.sigs.k8s.io/guides/#installing-gateway-api)
     * ... or simply `kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.0.0/experimental-install.yaml`
     * `v1.0.0` is just a reference for a fresh new deployment, Gateway API `v0.4.0` or any newer versions are supported.
 * Start (or restart) the controller
@@ -21,7 +21,7 @@ See below the [getting started steps](#getting-started).
 
 ## Conformance
 
-Gateway API `v1alpha2`, `v1beta1` and `v1` specs are partially implemented in v0.15 release. The following list describes what is (or is not) supported:
+Gateway API `v1alpha2`, `v1beta1` and `v1` specs are partially implemented in v0.16 release. The following list describes what is (or is not) supported:
 
 * Target Services can be annotated with [Backend or Path scoped]({{% relref "keys#scope" %}}) configuration keys, this will continue to be supported.
 * Gateway API resources doesn't support annotations, this is planned to continue to be unsupported. Extensions to the Gateway API spec will be added in the extension points of the API.
@@ -37,12 +37,12 @@ Gateway API `v1alpha2`, `v1beta1` and `v1` specs are partially implemented in v0
 
 * Version `v1alpha1` support was dropped on v0.15.
 * Versions `v1beta1` and `v1` support was added on v0.15.
-* `v1alpha2`, `v1beta1` and `v1` versions will continue to be supported on future HAProxy Ingress releases.
-* Spec conformance will be gradually incremented on newer HAProxy Ingress versions.
+* `v1alpha2`, `v1beta1` and `v1` versions will continue to be supported on future N42 Gateway releases.
+* Spec conformance will be gradually incremented on newer N42 Gateway versions.
 
 ## Ingress
 
-A single HAProxy Ingress deployment can manage Ingress, and also `v1alpha2`, `v1beta1` and `v1` Gateway API resources in the same Kubernetes cluster. If the same hostname and path with the same path type is declared in the Gateway API and Ingress, the Gateway API wins and a warning is logged. Ingress resources will continue to be supported in future controller versions, without side effects, and without the need to install the Gateway API CRDs.
+A single N42 Gateway deployment can manage Ingress, and also `v1alpha2`, `v1beta1` and `v1` Gateway API resources in the same Kubernetes cluster. If the same hostname and path with the same path type is declared in the Gateway API and Ingress, the Gateway API wins and a warning is logged. Ingress resources will continue to be supported in future controller versions, without side effects, and without the need to install the Gateway API CRDs.
 
 ## Getting started
 
@@ -54,13 +54,13 @@ Add the following steps to the [Getting Started guide]({{% relref "/docs/getting
 $ kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.0.0/experimental-install.yaml
 ```
 
-Restart HAProxy Ingress so it can find the just installed APIs:
+Restart N42 Gateway so it can find the just installed APIs:
 
 ```
 $ kubectl --namespace ingress-controller delete pod -lapp.kubernetes.io/name=haproxy-ingress
 ```
 
-A GatewayClass enables Gateways to be read and parsed by HAProxy Ingress. Create a GatewayClass with the following content:
+A GatewayClass enables Gateways to be read and parsed by N42 Gateway. Create a GatewayClass with the following content:
 
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
@@ -98,7 +98,7 @@ spec:
     protocol: HTTP
 ```
 
-HTTPRoutes configure the hostnames and target services. Create a HTTPRoute with the following content, changing `echoserver-from-gateway.local` to a hostname that resolves to a HAProxy Ingress node:
+HTTPRoutes configure the hostnames and target services. Create a HTTPRoute with the following content, changing `echoserver-from-gateway.local` to a hostname that resolves to a N42 Gateway node:
 
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
@@ -133,7 +133,7 @@ $ kubectl --namespace default create deployment redis --image docker.io/redis
 $ kubectl --namespace default expose deployment redis --port=6379
 ```
 
-A new port need to be added if HAProxy Ingress is not configured in the host network. If so, add the following snippet in `values.yaml` and apply it using Helm:
+A new port need to be added if N42 Gateway is not configured in the host network. If so, add the following snippet in `values.yaml` and apply it using Helm:
 
 ```yaml
 controller:
@@ -178,7 +178,7 @@ spec:
       port: 6379
 ```
 
-Send a ping to the Redis server using `curl`. Change `192.168.106.2` below to the IP address of HAProxy Ingress:
+Send a ping to the Redis server using `curl`. Change `192.168.106.2` below to the IP address of N42 Gateway:
 
 ```
 $ curl -v telnet://192.168.106.2:6379

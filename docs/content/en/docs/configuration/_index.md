@@ -6,4 +6,4 @@ description: >
   All configuration options: ingress/service annotations, global ConfigMap options, command-line options and template overwriting.
 ---
 
-See below all the supported HAProxy Ingress configuration options.
+See below all the supported N42 Gateway configuration options.

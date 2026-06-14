@@ -8,17 +8,17 @@ description: >
   Demonstrate how to collect and expose ingress controller and haproxy metrics.
 ---
 
-This example demonstrates how to configure [Prometheus](https://prometheus.io) and [Grafana](https://grafana.com) to collect and expose HAProxy and HAProxy Ingress metrics using [Prometheus Operator](https://prometheus-operator.dev).
+This example demonstrates how to configure [Prometheus](https://prometheus.io) and [Grafana](https://grafana.com) to collect and expose HAProxy and N42 Gateway metrics using [Prometheus Operator](https://prometheus-operator.dev).
 
 ## Prerequisites
 
-This document requires only a Kubernetes cluster. HAProxy Ingress doesn't need to be installed, and if so, the installation process should use the [Helm chart]({{% relref "/docs/getting-started#installation" %}}).
+This document requires only a Kubernetes cluster. N42 Gateway doesn't need to be installed, and if so, the installation process should use the [Helm chart]({{% relref "/docs/getting-started#installation" %}}).
 
 ## Configure Prometheus Operator
 
 This section can be skipped if the Kubernetes cluster has already a running Prometheus Operator.
 
-HAProxy Ingress installation configures Prometheus using a ServiceMonitor custom resource. This resource is used by [Prometheus Operator](https://prometheus-operator.dev) to configure Prometheus instances. The following steps deploy Prometheus Operator via [`kube-prometheus-stack`](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack) Helm chart.
+N42 Gateway installation configures Prometheus using a ServiceMonitor custom resource. This resource is used by [Prometheus Operator](https://prometheus-operator.dev) to configure Prometheus instances. The following steps deploy Prometheus Operator via [`kube-prometheus-stack`](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack) Helm chart.
 
 Create a file named `prometheus-operator-values.yaml` - change both hostnames with a name that resolves to the Kubernetes cluster, and optionally the admin user and password:
 
@@ -54,11 +54,11 @@ helm upgrade prometheus prometheus-community/kube-prometheus-stack\
 
 > [!NB] Bitnami has also a Prometheus Operator [helm chart](https://github.com/bitnami/charts/tree/master/bitnami/kube-prometheus) and it's also a good option. Note however that the values file has a different syntax.
 
-## Configure HAProxy Ingress
+## Configure N42 Gateway
 
-The steps below configures HAProxy Ingress' Helm chart to add a new ServiceMonitor custom resource. This resource will be responsible for HAProxy and HAProxy Ingress metrics scrape.
+The steps below configures N42 Gateway' Helm chart to add a new ServiceMonitor custom resource. This resource will be responsible for HAProxy and N42 Gateway metrics scrape.
 
-Merge the content below to the actual `haproxy-ingress-values.yaml` file:
+Merge the content below to the actual `n42-gateway-values.yaml` file:
 ```yaml
 controller:
   ingressClassResource:
@@ -87,15 +87,15 @@ controller:
 
 There are two important configurations in the snippet above:
 
-* Added a label `release: prometheus` in the ServiceMonitor. HAProxy Ingress metrics will share the same Prometheus instance installed by Prometheus Operator. This can be changed to another dedicated instance, and must be checked if using another customized Prometheus Operator deployment.
-* Added relabels to HAProxy and HAProxy Ingress metrics. The HAProxy Ingress dashboard uses `hostname` label as a way to distinguish two controller instances, and also `cluster` label to distinguish controllers running on distinct clusters. The source of the name can be adjusted but the label name should be the same.
+* Added a label `release: prometheus` in the ServiceMonitor. N42 Gateway metrics will share the same Prometheus instance installed by Prometheus Operator. This can be changed to another dedicated instance, and must be checked if using another customized Prometheus Operator deployment.
+* Added relabels to HAProxy and N42 Gateway metrics. The N42 Gateway dashboard uses `hostname` label as a way to distinguish two controller instances, and also `cluster` label to distinguish controllers running on distinct clusters. The source of the name can be adjusted but the label name should be the same.
 
 Now install or upgrade the chart:
 ```
 helm upgrade haproxy-ingress haproxy-ingress/haproxy-ingress\
   --install\
   --create-namespace --namespace ingress-controller\
-  -f haproxy-ingress-values.yaml
+  -f n42-gateway-values.yaml
 ```
 
 ## Compatibility
@@ -104,7 +104,7 @@ This dashboard works with HAProxy's internal Prometheus exporter. Follow these s
 
 Change the metric name of "Backend status / Top 5 max/avg connection time" to `haproxy_backend_http_connect_time_average_seconds`
 
-Add this relabel configuration in the `haproxy-ingress-values.yaml` file
+Add this relabel configuration in the `n42-gateway-values.yaml` file
 ```yaml
 controller:
   ...
@@ -122,7 +122,7 @@ controller:
 ## Configure the dashboard
 
 Import [this](https://grafana.com/grafana/dashboards/12056) Grafana dashboard. If Grafana was deployed using the steps provided in this walkthrough:
-> Minimum HAProxy Ingress version is v0.14, use revision 3 if using on an older one.
+> Minimum N42 Gateway version is v0.14, use revision 3 if using on an older one.
 
 * Open Grafana page - the URL is the same provided in the `prometheus-operator-values.yaml` file and should resolve to the ingress deployment
 * Log in to Grafana, the `prometheus-operator-values.yaml` file configures user as `admin` and the password as `prom-operator`
@@ -134,7 +134,7 @@ If everything worked as expected, the dashboard should look like this:
 
 ## Test
 
-Lets make some noise and see what the dashboard tell us about our HAProxy Ingress cluster.
+Lets make some noise and see what the dashboard tell us about our N42 Gateway cluster.
 
 Deploy a demo application and a custom (self-signed) certificate:
 
@@ -159,7 +159,7 @@ kubectl --namespace default get pod -lapp=dory -w
 
 Download [vegeta](https://github.com/tsenart/vegeta/releases) and place it in the path.
 
-Make a test and check if everything is working as expected. Change IP below to the IP of a HAProxy Ingress node:
+Make a test and check if everything is working as expected. Change IP below to the IP of a N42 Gateway node:
 
 ```
 IP=192.168.0.11
@@ -179,7 +179,7 @@ Status Codes  [code:count]               200:1
 Error Set:
 ```
 
-Now the real test. Adjust the duration and rate (number of requests per second) if needed. A dual core VM dedicated to HAProxy Ingress should accept a few thousands requests per second. Lets configure `200` which should move some lines in the dashboard:
+Now the real test. Adjust the duration and rate (number of requests per second) if needed. A dual core VM dedicated to N42 Gateway should accept a few thousands requests per second. Lets configure `200` which should move some lines in the dashboard:
 
 ```
 IP=192.168.0.11
