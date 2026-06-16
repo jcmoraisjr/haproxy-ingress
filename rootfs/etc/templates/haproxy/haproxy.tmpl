@@ -354,6 +354,9 @@ backend {{ $backend.ID }}
 {{- if $backend.BalanceAlgorithm }}
     balance {{ $backend.BalanceAlgorithm }}
 {{- end }}
+{{- if $backend.ServerRename }}
+    option server-rename
+{{- end }}
 {{- $timeout := $backend.Timeout }}
 {{- if $timeout.Connect }}
     timeout connect {{ $timeout.Connect }}

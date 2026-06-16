@@ -1349,12 +1349,14 @@ INFO-V(2) disabled endpoint '172.17.0.3:8080' weight '1' backend/server 'default
 			doconfig1: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.EpNaming = types.EpIPPort
+				b.ServerRename = true
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.EpNaming = types.EpIPPort
+				b.ServerRename = true
 				b.Dynamic.DynScaling = types.DynScalingSlots
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
 				b.AcquireEndpoint("172.17.0.4", 8080, "")
@@ -1378,6 +1380,7 @@ set server default_app_8080/172.17.0.4:8080 state ready
 				"",
 				"",
 				"Server name updated.",
+				"",
 			},
 			logging: `
 INFO-V(2) api call: set server default_app_8080/172.17.0.3:8080 addr 172.17.0.4 port 8080
@@ -1389,11 +1392,13 @@ INFO-V(2) empty response from server
 INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' on backend/server 'default_app_8080/172.17.0.3:8080'
 INFO-V(2) api call: set server default_app_8080/172.17.0.3:8080 state maint
 INFO-V(2) empty response from server
+INFO-V(2) disabled endpoint '172.17.0.4:8080' weight '1' on backend/server 'default_app_8080/172.17.0.3:8080'
 INFO-V(2) api call: set server default_app_8080/172.17.0.3:8080 name 172.17.0.4:8080
 INFO-V(2) response from server: Server name updated.
+INFO-V(2) renamed server on backend 'default_app_8080' from '172.17.0.3:8080' to '172.17.0.4:8080'
 INFO-V(2) api call: set server default_app_8080/172.17.0.4:8080 state ready
 INFO-V(2) empty response from server
-INFO-V(2) renamed server on backend 'default_app_8080' from '172.17.0.3:8080' to '172.17.0.4:8080'
+INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' on backend/server 'default_app_8080/172.17.0.4:8080'
 `,
 		},
 		// slot reuse with EpTargetRef naming and DynScalingAdd: server rename via delete+add
@@ -1482,12 +1487,14 @@ INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' on backend/server 'defau
 			doconfig1: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.EpNaming = types.EpIPPort
+				b.ServerRename = true
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
 				b.AddEmptyEndpoint()
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.EpNaming = types.EpIPPort
+				b.ServerRename = true
 				b.Dynamic.DynScaling = types.DynScalingSlots
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
 				b.AcquireEndpoint("172.17.0.4", 8080, "")
@@ -1498,35 +1505,28 @@ INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' on backend/server 'defau
 			},
 			dynamic: true,
 			cmd: `
-set server default_app_8080/srv002 addr 172.17.0.4 port 8080
-set server default_app_8080/srv002 weight 1
-set server default_app_8080/srv002 state ready
-set server default_app_8080/srv002 state maint
 set server default_app_8080/srv002 name 172.17.0.4:8080
+set server default_app_8080/172.17.0.4:8080 addr 172.17.0.4 port 8080
+set server default_app_8080/172.17.0.4:8080 weight 1
 set server default_app_8080/172.17.0.4:8080 state ready
 `,
 			cmdOutput: []string{
+				"Server name updated.",
 				"IP changed from '127.0.0.1' to '172.17.0.4' by 'stats socket command'",
 				"",
 				"",
-				"",
-				"Server name updated.",
 			},
 			logging: `
-INFO-V(2) api call: set server default_app_8080/srv002 addr 172.17.0.4 port 8080
-INFO-V(2) response from server: IP changed from '127.0.0.1' to '172.17.0.4' by 'stats socket command'
-INFO-V(2) api call: set server default_app_8080/srv002 weight 1
-INFO-V(2) empty response from server
-INFO-V(2) api call: set server default_app_8080/srv002 state ready
-INFO-V(2) empty response from server
-INFO-V(2) enabled endpoint '172.17.0.4:8080' weight '1' on backend/server 'default_app_8080/srv002'
-INFO-V(2) api call: set server default_app_8080/srv002 state maint
-INFO-V(2) empty response from server
 INFO-V(2) api call: set server default_app_8080/srv002 name 172.17.0.4:8080
 INFO-V(2) response from server: Server name updated.
+INFO-V(2) renamed server on backend 'default_app_8080' from 'srv002' to '172.17.0.4:8080'
+INFO-V(2) api call: set server default_app_8080/172.17.0.4:8080 addr 172.17.0.4 port 8080
+INFO-V(2) response from server: IP changed from '127.0.0.1' to '172.17.0.4' by 'stats socket command'
+INFO-V(2) api call: set server default_app_8080/172.17.0.4:8080 weight 1
+INFO-V(2) empty response from server
 INFO-V(2) api call: set server default_app_8080/172.17.0.4:8080 state ready
 INFO-V(2) empty response from server
-INFO-V(2) renamed server on backend 'default_app_8080' from 'srv002' to '172.17.0.4:8080'
+INFO-V(2) enabled endpoint '172.17.0.4:8080' weight '1' on backend/server 'default_app_8080/172.17.0.4:8080'
 `,
 		},
 	}

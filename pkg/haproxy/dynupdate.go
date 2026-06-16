@@ -268,18 +268,19 @@ func (d *dynUpdater) dynamicallySyncSlots(pair *backendPair) bool {
 		}
 	}
 
-	// Track pending renames: when a slot is reused for a different endpoint
-	// whose desired name differs from the current HAProxy server name, we
-	// rename afterwards so that the server state file stays consistent.
-	// Only meaningful with EpIPPort or EpTargetRef naming where the name
-	// carries semantic value (IP:port or pod name).
+	// TODO: also gate wantRename on the HAProxy version once version
+	// tracking is added to the model; 'set server name' requires the
+	// HAProxy patch that introduces 'option server-rename'.
+	wantRename := curBack.ServerRename
+
+	// pendingRename tracks live-slot reuses where the slot was already
+	// updated to the new IP by checkEndpointPair; the rename follows after.
 	type pendingRename struct {
 		ep          *hatypes.Endpoint
 		oldName     string
 		desiredName string
 	}
 	var renames []pendingRename
-	wantRename := curBack.EpNaming == hatypes.EpIPPort || curBack.EpNaming == hatypes.EpTargetRef
 
 	// reuse the backend/server which has the same target endpoint, if found,
 	// this will save some socket calls and will not mess endpoint metrics
@@ -325,17 +326,20 @@ func (d *dynUpdater) dynamicallySyncSlots(pair *backendPair) bool {
 		// reusing empty slots from oldBack
 		desiredName := added[i].Name
 		added[i].Name = empty[i].Name
-		if wantRename && desiredName != empty[i].Name {
-			renames = append(renames, pendingRename{
-				ep:          added[i],
-				oldName:     empty[i].Name,
-				desiredName: desiredName,
-			})
-		}
 		if curBack.Cookie.Preserve && added[i].CookieValue != empty[i].CookieValue {
 			// if cookie doesn't match here and preserving the value is
-			// important, don't even enable the endpoint before reloading
+			// important, don't even enable the endpoint before reloading.
+			// Still update the in-memory name so it's correct after reload.
+			if wantRename && desiredName != empty[i].Name {
+				added[i].Name = desiredName
+			}
 			updated = false
+		} else if wantRename && desiredName != empty[i].Name {
+			if !d.execRenameEndpoint(curBack.ID, empty[i].Name, nil, added[i], desiredName) {
+				// rename failed; leave the slot disabled and let a reload fix it
+				updated = false
+				continue
+			}
 		} else if !d.execEnableEndpoint(curBack.ID, nil, added[i]) || added[i].Label != "" {
 			updated = false
 		}
@@ -346,32 +350,34 @@ func (d *dynUpdater) dynamicallySyncSlots(pair *backendPair) bool {
 		curBack.AddEmptyEndpoint().Name = empty[i].Name
 	}
 
-	// Apply pending renames so that HAProxy server names stay consistent
-	// with the endpoint naming scheme, avoiding server state file mismatches.
+	// Apply pending renames: live slots that were updated to the new IP by
+	// checkEndpointPair and now need their server name updated too.
+	// addr/weight are already current; we only need disable→rename→re-enable.
 	for _, r := range renames {
-		if !r.ep.Enabled {
-			// endpoint was not enabled (e.g. cookie mismatch), just update
-			// the in-memory name so it will be correct after reload
+		if !r.ep.Enabled || r.ep.Label != "" {
+			// endpoint was not enabled (e.g. cookie mismatch) or is a
+			// blue/green use-server entry; just update the in-memory name
+			// so it will be correct after reload
 			r.ep.Name = r.desiredName
 			continue
 		}
-		if !d.execDisableServer(curBack.ID, r.ep) {
+		if !d.execDisableEndpoint(curBack.ID, r.ep) {
 			updated = false
 			continue
 		}
-		if !d.execSetNameServer(curBack.ID, r.ep, r.oldName, r.desiredName) {
-			// rename failed (e.g. backend doesn't have option server-rename),
-			// re-enable with old name and let a reload fix it
+		if !d.execSetNameServer(curBack.ID, r.oldName, r.desiredName) {
+			// rename failed; re-enable with old name and let a reload fix it
 			d.execEnableServer(curBack.ID, r.ep)
 			updated = false
 			continue
 		}
 		r.ep.Name = r.desiredName
-		if !d.execEnableServer(curBack.ID, r.ep) {
+		d.logger.InfoV(2, "renamed server on backend '%s' from '%s' to '%s'", curBack.ID, r.oldName, r.desiredName)
+		if !d.execEnableServer(curBack.ID, r.ep) || r.ep.Label != "" {
 			updated = false
 			continue
 		}
-		d.logger.InfoV(2, "renamed server on backend '%s' from '%s' to '%s'", curBack.ID, r.oldName, r.desiredName)
+		d.logger.InfoV(2, "updated endpoint '%s' weight '%d' on backend/server '%s/%s'", r.ep.Target, r.ep.Weight, curBack.ID, r.ep.Name)
 	}
 
 	return updated
@@ -658,9 +664,44 @@ func (d *dynUpdater) execEnableServer(backname string, ep *hatypes.Endpoint) boo
 	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdSetServerState)
 }
 
-func (d *dynUpdater) execSetNameServer(backname string, ep *hatypes.Endpoint, oldName, newName string) bool {
+func (d *dynUpdater) execSetNameServer(backname, oldName, newName string) bool {
 	cmd := fmt.Sprintf("set server %s/%s name %s", backname, oldName, newName)
-	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdSetServerName)
+	d.logger.InfoV(2, "api call: %s", cmd)
+	msgs, err := d.execCommand(d.metrics.HAProxySetServerResponseTime, []string{cmd})
+	if err != nil {
+		d.logger.Error("error renaming backend server %s/%s to %s: %s", backname, oldName, newName, err.Error())
+		return false
+	}
+	msg := msgs[0]
+	if !cmdResponseOK(cmdSetServerName, msg) {
+		if msg == "" {
+			msg = "<empty>"
+		}
+		d.logger.Warn("unrecognized response renaming backend server %s/%s to %s: %s", backname, oldName, newName, msg)
+		return false
+	}
+	if msg == "" {
+		d.logger.InfoV(2, "empty response from server")
+	} else {
+		d.logger.InfoV(2, "response from server: %s", msg)
+	}
+	return true
+}
+
+// execRenameEndpoint renames a slot (which must already be in maintenance mode)
+// from oldName to newName and then enables it for ep. oldEP should be nil when
+// filling an empty slot, or the previous endpoint when re-enabling a live slot.
+// Returns true if both the rename and the enable succeeded.
+func (d *dynUpdater) execRenameEndpoint(backname, oldName string, oldEP, ep *hatypes.Endpoint, newName string) bool {
+	if !d.execSetNameServer(backname, oldName, newName) {
+		return false
+	}
+	ep.Name = newName
+	d.logger.InfoV(2, "renamed server on backend '%s' from '%s' to '%s'", backname, oldName, newName)
+	if !d.execEnableEndpoint(backname, oldEP, ep) || ep.Label != "" {
+		return false
+	}
+	return true
 }
 
 func (d *dynUpdater) execDeleteServer(backname string, ep *hatypes.Endpoint) bool {
