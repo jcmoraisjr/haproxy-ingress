@@ -1344,6 +1344,191 @@ WARN unrecognized response deleting backend server default_app_8080/pod3: Server
 INFO-V(2) disabled endpoint '172.17.0.3:8080' weight '1' backend/server 'default_app_8080/pod3'
 `,
 		},
+		// slot reuse with EpIPPort naming: server should be renamed to match new IP:port
+		"test42": {
+			doconfig1: func(c *testConfig) {
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
+				b.EpNaming = types.EpIPPort
+				b.ServerRename = true
+				b.AcquireEndpoint("172.17.0.2", 8080, "")
+				b.AcquireEndpoint("172.17.0.3", 8080, "")
+			},
+			doconfig2: func(c *testConfig) {
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
+				b.EpNaming = types.EpIPPort
+				b.ServerRename = true
+				b.Dynamic.DynScaling = types.DynScalingSlots
+				b.AcquireEndpoint("172.17.0.2", 8080, "")
+				b.AcquireEndpoint("172.17.0.4", 8080, "")
+			},
+			expected: []string{
+				"172.17.0.2:8080:172.17.0.2:8080:1",
+				"172.17.0.4:8080:172.17.0.4:8080:1",
+			},
+			dynamic: true,
+			cmd: `
+set server default_app_8080/172.17.0.3:8080 addr 172.17.0.4 port 8080
+set server default_app_8080/172.17.0.3:8080 weight 1
+set server default_app_8080/172.17.0.3:8080 state ready
+set server default_app_8080/172.17.0.3:8080 state maint
+set server default_app_8080/172.17.0.3:8080 name 172.17.0.4:8080
+set server default_app_8080/172.17.0.4:8080 state ready
+`,
+			cmdOutput: []string{
+				"IP changed from '172.17.0.3' to '172.17.0.4' by 'stats socket command'",
+				"",
+				"",
+				"",
+				"Server name updated.",
+				"",
+			},
+			logging: `
+INFO-V(2) api call: set server default_app_8080/172.17.0.3:8080 addr 172.17.0.4 port 8080
+INFO-V(2) response from server: IP changed from '172.17.0.3' to '172.17.0.4' by 'stats socket command'
+INFO-V(2) api call: set server default_app_8080/172.17.0.3:8080 weight 1
+INFO-V(2) empty response from server
+INFO-V(2) api call: set server default_app_8080/172.17.0.3:8080 state ready
+INFO-V(2) empty response from server
+INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' on backend/server 'default_app_8080/172.17.0.3:8080'
+INFO-V(2) api call: set server default_app_8080/172.17.0.3:8080 state maint
+INFO-V(2) empty response from server
+INFO-V(2) disabled endpoint '172.17.0.4:8080' weight '1' on backend/server 'default_app_8080/172.17.0.3:8080'
+INFO-V(2) api call: set server default_app_8080/172.17.0.3:8080 name 172.17.0.4:8080
+INFO-V(2) response from server: Server name updated.
+INFO-V(2) renamed server on backend 'default_app_8080' from '172.17.0.3:8080' to '172.17.0.4:8080'
+INFO-V(2) api call: set server default_app_8080/172.17.0.4:8080 state ready
+INFO-V(2) empty response from server
+INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' on backend/server 'default_app_8080/172.17.0.4:8080'
+`,
+		},
+		// slot reuse with EpTargetRef naming and DynScalingAdd: server rename via delete+add
+		// (EpTargetRef is designed for DynScalingAdd where add/del server handles naming)
+		"test43": {
+			doconfig1: func(c *testConfig) {
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
+				b.EpNaming = types.EpTargetRef
+				b.AcquireEndpoint("172.17.0.2", 8080, "pod1")
+				b.AcquireEndpoint("172.17.0.3", 8080, "pod2")
+			},
+			doconfig2: func(c *testConfig) {
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
+				b.EpNaming = types.EpTargetRef
+				b.Dynamic.DynScaling = types.DynScalingAdd
+				b.AcquireEndpoint("172.17.0.2", 8080, "pod1")
+				b.AcquireEndpoint("172.17.0.4", 8080, "pod3")
+			},
+			expected: []string{
+				"pod1:172.17.0.2:8080:1",
+				"pod3:172.17.0.4:8080:1",
+			},
+			dynamic: true,
+			cmd: `
+set server default_app_8080/pod2 state maint
+del server default_app_8080/pod2
+add server default_app_8080/pod3 172.17.0.4:8080 weight 1
+set server default_app_8080/pod3 state ready
+`,
+			cmdOutput: []string{
+				"",
+				"Server deleted.",
+				"New server registered.",
+			},
+			logging: `
+INFO-V(2) api call: set server default_app_8080/pod2 state maint
+INFO-V(2) empty response from server
+INFO-V(2) api call: del server default_app_8080/pod2
+INFO-V(2) response from server: Server deleted.
+INFO-V(2) deleted endpoint '172.17.0.3:8080' weight '1' backend/server 'default_app_8080/pod2'
+INFO-V(2) api call: add server default_app_8080/pod3 172.17.0.4:8080 weight 1
+INFO-V(2) response from server: New server registered.
+INFO-V(2) api call: set server default_app_8080/pod3 state ready
+INFO-V(2) empty response from server
+INFO-V(2) registered new endpoint '172.17.0.4:8080' weight '1' on backend/server 'default_app_8080/pod3'
+`,
+		},
+		// slot reuse with EpSequence naming: no rename needed (names are generic slot IDs)
+		"test44": {
+			doconfig1: func(c *testConfig) {
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
+				b.AcquireEndpoint("172.17.0.2", 8080, "")
+				b.AcquireEndpoint("172.17.0.3", 8080, "")
+			},
+			doconfig2: func(c *testConfig) {
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
+				b.Dynamic.DynScaling = types.DynScalingSlots
+				b.AcquireEndpoint("172.17.0.2", 8080, "")
+				b.AcquireEndpoint("172.17.0.4", 8080, "")
+			},
+			expected: []string{
+				"srv001:172.17.0.2:8080:1",
+				"srv002:172.17.0.4:8080:1",
+			},
+			dynamic: true,
+			cmd: `
+set server default_app_8080/srv002 addr 172.17.0.4 port 8080
+set server default_app_8080/srv002 weight 1
+set server default_app_8080/srv002 state ready
+`,
+			cmdOutput: []string{
+				"IP changed from '172.17.0.3' to '172.17.0.4' by 'stats socket command'",
+			},
+			logging: `
+INFO-V(2) api call: set server default_app_8080/srv002 addr 172.17.0.4 port 8080
+INFO-V(2) response from server: IP changed from '172.17.0.3' to '172.17.0.4' by 'stats socket command'
+INFO-V(2) api call: set server default_app_8080/srv002 weight 1
+INFO-V(2) empty response from server
+INFO-V(2) api call: set server default_app_8080/srv002 state ready
+INFO-V(2) empty response from server
+INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' on backend/server 'default_app_8080/srv002'
+`,
+		},
+		// enabling empty slot with EpIPPort naming: server gets renamed from empty slot name to IP:port
+		"test45": {
+			doconfig1: func(c *testConfig) {
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
+				b.EpNaming = types.EpIPPort
+				b.ServerRename = true
+				b.AcquireEndpoint("172.17.0.2", 8080, "")
+				b.AddEmptyEndpoint()
+			},
+			doconfig2: func(c *testConfig) {
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
+				b.EpNaming = types.EpIPPort
+				b.ServerRename = true
+				b.Dynamic.DynScaling = types.DynScalingSlots
+				b.AcquireEndpoint("172.17.0.2", 8080, "")
+				b.AcquireEndpoint("172.17.0.4", 8080, "")
+			},
+			expected: []string{
+				"172.17.0.2:8080:172.17.0.2:8080:1",
+				"172.17.0.4:8080:172.17.0.4:8080:1",
+			},
+			dynamic: true,
+			cmd: `
+set server default_app_8080/srv002 name 172.17.0.4:8080
+set server default_app_8080/172.17.0.4:8080 addr 172.17.0.4 port 8080
+set server default_app_8080/172.17.0.4:8080 weight 1
+set server default_app_8080/172.17.0.4:8080 state ready
+`,
+			cmdOutput: []string{
+				"Server name updated.",
+				"IP changed from '127.0.0.1' to '172.17.0.4' by 'stats socket command'",
+				"",
+				"",
+			},
+			logging: `
+INFO-V(2) api call: set server default_app_8080/srv002 name 172.17.0.4:8080
+INFO-V(2) response from server: Server name updated.
+INFO-V(2) renamed server on backend 'default_app_8080' from 'srv002' to '172.17.0.4:8080'
+INFO-V(2) api call: set server default_app_8080/172.17.0.4:8080 addr 172.17.0.4 port 8080
+INFO-V(2) response from server: IP changed from '127.0.0.1' to '172.17.0.4' by 'stats socket command'
+INFO-V(2) api call: set server default_app_8080/172.17.0.4:8080 weight 1
+INFO-V(2) empty response from server
+INFO-V(2) api call: set server default_app_8080/172.17.0.4:8080 state ready
+INFO-V(2) empty response from server
+INFO-V(2) enabled endpoint '172.17.0.4:8080' weight '1' on backend/server 'default_app_8080/172.17.0.4:8080'
+`,
+		},
 	}
 	readFile = func(_ string) ([]byte, error) {
 		return []byte("<content>"), nil

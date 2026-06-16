@@ -690,7 +690,8 @@ type Backend struct {
 	DNSPort   string
 	SourceIPs []net.IP
 	Endpoints []*Endpoint
-	EpNaming  EndpointNaming
+	EpNaming     EndpointNaming
+	ServerRename bool
 	//
 	// Paths
 	//
