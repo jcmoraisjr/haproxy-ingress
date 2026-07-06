@@ -1372,6 +1372,7 @@ set server default_app_8080/172.17.0.3:8080 weight 1
 set server default_app_8080/172.17.0.3:8080 state ready
 set server default_app_8080/172.17.0.3:8080 state maint
 set server default_app_8080/172.17.0.3:8080 name 172.17.0.4:8080
+clear counters server default_app_8080/172.17.0.4:8080
 set server default_app_8080/172.17.0.4:8080 state ready
 `,
 			cmdOutput: []string{
@@ -1380,6 +1381,7 @@ set server default_app_8080/172.17.0.4:8080 state ready
 				"",
 				"",
 				"Server name updated.",
+				"Server counters cleared.",
 				"",
 			},
 			logging: `
@@ -1396,6 +1398,8 @@ INFO-V(2) disabled endpoint '172.17.0.4:8080' weight '1' on backend/server 'defa
 INFO-V(2) api call: set server default_app_8080/172.17.0.3:8080 name 172.17.0.4:8080
 INFO-V(2) response from server: Server name updated.
 INFO-V(2) renamed server on backend 'default_app_8080' from '172.17.0.3:8080' to '172.17.0.4:8080'
+INFO-V(2) api call: clear counters server default_app_8080/172.17.0.4:8080
+INFO-V(2) response from server: Server counters cleared.
 INFO-V(2) api call: set server default_app_8080/172.17.0.4:8080 state ready
 INFO-V(2) empty response from server
 INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' on backend/server 'default_app_8080/172.17.0.4:8080'

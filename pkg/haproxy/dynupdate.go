@@ -374,6 +374,14 @@ func (d *dynUpdater) dynamicallySyncSlots(pair *backendPair) bool {
 		}
 		r.ep.Name = r.desiredName
 		d.logger.InfoV(2, "renamed server on backend '%s' from '%s' to '%s'", curBack.ID, r.oldName, r.desiredName)
+
+		// Reset counters while the server is still in maintenance mode so
+		// per-pod counter attribution starts cleanly for the new occupant.
+		// Failure is non-fatal: the rename has already committed; dirty
+		// counters are preferable to failing the update entirely (the
+		// helper logs a warning internally).
+		d.execClearCountersServer(curBack.ID, r.desiredName)
+
 		if !d.execEnableServer(curBack.ID, r.ep) || r.ep.Label != "" {
 			updated = false
 			continue
@@ -689,6 +697,40 @@ func (d *dynUpdater) execSetNameServer(backname, oldName, newName string) bool {
 	return true
 }
 
+// execClearCountersServer resets the accumulated statistics counters of a
+// single server via the "clear counters server <b>/<s>" CLI command. The
+// server must be in maintenance mode when called (same precondition as
+// "set server ... name").
+//
+// Returns true on success, false on any failure (unrecognized response,
+// socket error, older HAProxy without the command). Callers treat a false
+// return as a soft failure: the rename has already succeeded; the only
+// consequence is that counters remain accumulated from the previous slot
+// occupant until the next reload.
+func (d *dynUpdater) execClearCountersServer(backname, name string) bool {
+	cmd := fmt.Sprintf("clear counters server %s/%s", backname, name)
+	d.logger.InfoV(2, "api call: %s", cmd)
+	msgs, err := d.execCommand(d.metrics.HAProxySetServerResponseTime, []string{cmd})
+	if err != nil {
+		d.logger.Warn("error clearing counters for %s/%s: %s (continuing)", backname, name, err.Error())
+		return false
+	}
+	msg := msgs[0]
+	if !cmdResponseOK(cmdClearCountersServer, msg) {
+		if msg == "" {
+			msg = "<empty>"
+		}
+		d.logger.Warn("unrecognized response clearing counters for %s/%s: %s (continuing)", backname, name, msg)
+		return false
+	}
+	if msg == "" {
+		d.logger.InfoV(2, "empty response from server")
+	} else {
+		d.logger.InfoV(2, "response from server: %s", msg)
+	}
+	return true
+}
+
 // execRenameEndpoint renames a slot (which must already be in maintenance mode)
 // from oldName to newName and then enables it for ep. oldEP should be nil when
 // filling an empty slot, or the previous endpoint when re-enabling a live slot.
@@ -718,17 +760,19 @@ const (
 	cmdSetServerWeight
 	cmdSetServerState
 	cmdSetServerName
+	cmdClearCountersServer
 	cmdDelServer
 	cmdCommitCrt
 )
 
 var backendServerCmdAction = map[cmdClass]string{
-	cmdAddServer:       "adding",
-	cmdSetServerAddr:   "updating (address)",
-	cmdSetServerWeight: "updating (weight)",
-	cmdSetServerState:  "updating (state)",
-	cmdSetServerName:   "updating (name)",
-	cmdDelServer:       "deleting",
+	cmdAddServer:           "adding",
+	cmdSetServerAddr:       "updating (address)",
+	cmdSetServerWeight:     "updating (weight)",
+	cmdSetServerState:      "updating (state)",
+	cmdSetServerName:       "updating (name)",
+	cmdClearCountersServer: "clearing counters",
+	cmdDelServer:           "deleting",
 }
 
 func (d *dynUpdater) execCommandBackendServer(observer func(duration time.Duration), backname string, ep *hatypes.Endpoint, cmd string, cmdcls cmdClass) bool {
@@ -774,6 +818,8 @@ func cmdResponseOK(cmdcls cmdClass, response string) bool {
 		return response == ""
 	case cmdSetServerName:
 		return response == "Server name updated."
+	case cmdClearCountersServer:
+		return response == "Server counters cleared."
 	case cmdDelServer:
 		return response == "Server deleted."
 	case cmdCommitCrt:
