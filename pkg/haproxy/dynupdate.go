@@ -336,7 +336,7 @@ func (d *dynUpdater) dynamicallySyncSlots(pair *backendPair) bool {
 			}
 			updated = false
 		} else if wantRename && desiredName != empty[i].Name {
-			if !d.execRenameEndpoint(curBack.ID, empty[i].Name, nil, added[i], desiredName) {
+			if !d.execRenameEndpoint(curBack.ID, empty[i].Name, added[i], desiredName) {
 				// rename failed; leave the slot disabled and let a reload fix it
 				updated = false
 				continue
@@ -739,17 +739,16 @@ func (d *dynUpdater) execClearCountersServer(backname, name string) bool {
 	return true
 }
 
-// execRenameEndpoint renames a slot (which must already be in maintenance mode)
-// from oldName to newName and then enables it for ep. oldEP should be nil when
-// filling an empty slot, or the previous endpoint when re-enabling a live slot.
+// execRenameEndpoint renames a previously empty slot (which must already be in
+// maintenance mode) from oldName to newName and then enables it for ep.
 // Returns true if both the rename and the enable succeeded.
-func (d *dynUpdater) execRenameEndpoint(backname, oldName string, oldEP, ep *hatypes.Endpoint, newName string) bool {
+func (d *dynUpdater) execRenameEndpoint(backname, oldName string, ep *hatypes.Endpoint, newName string) bool {
 	if !d.execSetNameServer(backname, oldName, newName) {
 		return false
 	}
 	ep.Name = newName
 	d.logger.InfoV(2, "renamed server on backend '%s' from '%s' to '%s'", backname, oldName, newName)
-	if !d.execEnableEndpoint(backname, oldEP, ep) || ep.Label != "" {
+	if !d.execEnableEndpoint(backname, nil, ep) || ep.Label != "" {
 		return false
 	}
 	return true
