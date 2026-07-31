@@ -698,9 +698,17 @@ func (d *dynUpdater) execSetNameServer(backname, oldName, newName string) bool {
 }
 
 // execClearCountersServer resets the accumulated statistics counters of a
-// single server via the "clear counters server <b>/<s>" CLI command. The
-// server must be in maintenance mode when called (same precondition as
+// single server via the "clear counters server <b>/<s> force" CLI command.
+// The server must be in maintenance mode when called (same precondition as
 // "set server ... name").
+//
+// The "force" keyword is always appended: it is required when the server's
+// counters live in a shared-memory stats file (shm-stats-file), where the
+// command otherwise refuses to break the monotonicity that monitoring tools
+// rely on. Resetting is exactly the intent here since the slot now backs a
+// different logical entity, and "force" is harmless for servers without a
+// shm-stats-file. It needs no privilege beyond the admin-level socket the
+// command already requires.
 //
 // Returns true on success, false on any failure (unrecognized response,
 // socket error, older HAProxy without the command). Callers treat a false
@@ -708,7 +716,7 @@ func (d *dynUpdater) execSetNameServer(backname, oldName, newName string) bool {
 // consequence is that counters remain accumulated from the previous slot
 // occupant until the next reload.
 func (d *dynUpdater) execClearCountersServer(backname, name string) bool {
-	cmd := fmt.Sprintf("clear counters server %s/%s", backname, name)
+	cmd := fmt.Sprintf("clear counters server %s/%s force", backname, name)
 	d.logger.InfoV(2, "api call: %s", cmd)
 	msgs, err := d.execCommand(d.metrics.HAProxySetServerResponseTime, []string{cmd})
 	if err != nil {
