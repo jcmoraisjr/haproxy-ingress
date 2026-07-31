@@ -268,10 +268,10 @@ func (d *dynUpdater) dynamicallySyncSlots(pair *backendPair) bool {
 		}
 	}
 
-	// TODO: gate wantRename on the HAProxy version once version
-	// tracking is added to the model; 'set server name' requires the
-	// HAProxy v2 rename patch series. With older HAProxy the CLI
-	// rejects the command and execSetNameServer falls back to a reload.
+	// TODO: gate wantRename on the HAProxy version once version tracking is
+	// added to the model; 'set server <b>/<s> name' first shipped in HAProxy
+	// 3.5-dev2. On older HAProxy the CLI rejects the command and
+	// execSetNameServer falls back to a reload.
 	wantRename := curBack.ServerRename
 
 	// pendingRename tracks live-slot reuses where the slot was already
@@ -377,9 +377,12 @@ func (d *dynUpdater) dynamicallySyncSlots(pair *backendPair) bool {
 
 		// Reset counters while the server is still in maintenance mode so
 		// per-pod counter attribution starts cleanly for the new occupant.
-		// Failure is non-fatal: the rename has already committed; dirty
-		// counters are preferable to failing the update entirely (the
-		// helper logs a warning internally).
+		// NOTE: 'clear counters server' is not released in HAProxy yet, so
+		// this currently returns false and logs a Warn on every rename; the
+		// call is left in so it activates automatically once the command
+		// ships. Failure is non-fatal by design: the rename has already
+		// committed; dirty counters are preferable to failing the update
+		// entirely (the helper logs the warning internally).
 		d.execClearCountersServer(curBack.ID, r.desiredName)
 
 		if !d.execEnableServer(curBack.ID, r.ep) || r.ep.Label != "" {
@@ -711,9 +714,10 @@ func (d *dynUpdater) execSetNameServer(backname, oldName, newName string) bool {
 // command already requires.
 //
 // Returns true on success, false on any failure (unrecognized response,
-// socket error, older HAProxy without the command). Callers treat a false
-// return as a soft failure: the rename has already succeeded; the only
-// consequence is that counters remain accumulated from the previous slot
+// socket error, or an HAProxy without the command). The command is not yet
+// released in HAProxy, so this presently returns false and logs a warning;
+// callers treat that as a soft failure: the rename has already succeeded; the
+// only consequence is that counters remain accumulated from the previous slot
 // occupant until the next reload.
 func (d *dynUpdater) execClearCountersServer(backname, name string) bool {
 	cmd := fmt.Sprintf("clear counters server %s/%s force", backname, name)
