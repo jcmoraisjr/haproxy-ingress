@@ -295,7 +295,7 @@ The table below describes all supported configuration keys.
 | [`agent-check-port`](#agent-check)                   | backend agent listen port               | Backend  |                                  |
 | [`agent-check-send`](#agent-check)                   | string to send upon agent connection    | Backend  |                                  |
 | [`allow-local-bind`](#bind)                          | [true\|false]                           | Global   | `false`                          |
-| [`allowlist-enforcement-mode`](#allowlist)           | [deny\|silent-drop]                     | Path     | `deny`                           |
+| [`allowlist-enforcement-mode`](#allowlist)           | [deny\|reject\|silent-drop]              | Path     | `deny`                           |
 | [`allowlist-source-range`](#allowlist)               | Comma-separated IPs or CIDRs            | Path     |                                  |
 | [`allowlist-source-header`](#allowlist)              | Header name that will be used as a src  | Path     |                                  |
 | [`app-root`](#app-root)                              | /url                                    | Host     |                                  |
@@ -366,7 +366,7 @@ The table below describes all supported configuration keys.
 | [`cross-namespace-services`](#cross-namespace)       | [allow\|deny]                           | Global   | `deny`                           |
 | [`default-backend-redirect`](#default-redirect)      | Location                                | Global   |                                  |
 | [`default-backend-redirect-code`](#default-redirect) | HTTP status code                        | Global   | `302`                            |
-| [`denylist-enforcement-mode`](#allowlist)            | [deny\|silent-drop]                     | Path     | `deny`                           |
+| [`denylist-enforcement-mode`](#allowlist)            | [deny\|reject\|silent-drop]              | Path     | `deny`                           |
 | [`denylist-source-range`](#allowlist)                | Comma-separated IPs or CIDRs            | Path     |                                  |
 | [`dns-accepted-payload-size`](#dns-resolvers)        | number                                  | Global   | `8192`                           |
 | [`dns-cluster-domain`](#dns-resolvers)               | cluster name                            | Global   | `cluster.local`                  |
@@ -736,11 +736,17 @@ will be used. This option is useful when ingress is hidden behind reverse proxy 
 still want to control access to separate paths from ingress configuration.
 * `allowlist-enforcement-mode` and `denylist-enforcement-mode`: Used to define what
 HAProxy should do with a request rejected by the allow list or the deny list,
-respectively. The default value `deny` responds `403 Forbidden` on HTTP requests and
-rejects the connection on TCP services. `silent-drop` instead discards the request
-without letting the client know the connection was dropped, in the same way the
-[WAF](#waf) does when configured to drop requests: the client keeps waiting until
-its own timeout expires, which slows down port scanners and misbehaving clients.
+respectively:
+  * `deny`, the default value, responds `403 Forbidden` on HTTP requests.
+  * `reject` closes the connection immediately without sending any HTTP response.
+  * `silent-drop` discards the request without letting the client know the
+  connection was dropped, in the same way the [WAF](#waf) does when configured to
+  drop requests: no packet is sent back, so the client keeps waiting until its own
+  timeout expires, which slows down port scanners and misbehaving clients.
+
+  On TCP services `deny` and `reject` behave the same, rejecting the connection
+  during content inspection, while `silent-drop` kills the connection without
+  notifying the client.
 
 Allowlist and denylist can be used together. The request will be denied if the
 configurations overlap and a source IP matches both the allowlist and denylist.

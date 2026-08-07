@@ -1190,19 +1190,19 @@ func (c *updater) readAccessConfig(config ConfigValueGetter) (allowed, denied ha
 	allowed.Rule, allowed.Exception = c.splitDualCIDR(allowcfg)
 	denied.Rule, denied.Exception = c.splitDualCIDR(denycfg)
 	allowed.SourceHeader = headercfg.Value
-	allowed.SilentDrop = c.readEnforcementMode(config, ingtypes.BackAllowlistEnforcementMode)
-	denied.SilentDrop = c.readEnforcementMode(config, ingtypes.BackDenylistEnforcementMode)
+	allowed.EnforcementMode = c.readEnforcementMode(config, ingtypes.BackAllowlistEnforcementMode)
+	denied.EnforcementMode = c.readEnforcementMode(config, ingtypes.BackDenylistEnforcementMode)
 	return allowed, denied
 }
 
-func (c *updater) readEnforcementMode(config ConfigValueGetter, key string) (silentDrop bool) {
+func (c *updater) readEnforcementMode(config ConfigValueGetter, key string) string {
 	modecfg := config.Get(key)
 	switch modecfg.Value {
 	case "", "deny":
-		return false
-	case "silent-drop":
-		return true
+		return "deny"
+	case "reject", "silent-drop":
+		return modecfg.Value
 	}
 	c.logger.Warn("ignoring invalid enforcement mode '%s' on %s, using 'deny' instead", modecfg.Value, modecfg.Source)
-	return false
+	return "deny"
 }

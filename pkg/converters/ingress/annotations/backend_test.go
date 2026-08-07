@@ -3289,8 +3289,8 @@ WARN both allowlist and whitelist were used on ingress 'default/ing1', ignoring 
 func TestAccessEnforcementMode(t *testing.T) {
 	testCases := []struct {
 		ann          map[string]string
-		expAllowDrop bool
-		expDenyDrop  bool
+		expAllowMode string
+		expDenyMode  string
 		logging      string
 	}{
 		// 0
@@ -3312,9 +3312,17 @@ func TestAccessEnforcementMode(t *testing.T) {
 				ingtypes.BackAllowlistSourceRange:     "10.0.0.0/8",
 				ingtypes.BackAllowlistEnforcementMode: "silent-drop",
 			},
-			expAllowDrop: true,
+			expAllowMode: "silent-drop",
 		},
 		// 3
+		{
+			ann: map[string]string{
+				ingtypes.BackAllowlistSourceRange:     "10.0.0.0/8",
+				ingtypes.BackAllowlistEnforcementMode: "reject",
+			},
+			expAllowMode: "reject",
+		},
+		// 4
 		{
 			ann: map[string]string{
 				ingtypes.BackAllowlistSourceRange:     "10.0.0.0/8",
@@ -3323,15 +3331,15 @@ func TestAccessEnforcementMode(t *testing.T) {
 			logging: `
 WARN ignoring invalid enforcement mode 'silent_drop' on ingress 'default/ing1', using 'deny' instead`,
 		},
-		// 4
+		// 5
 		{
 			ann: map[string]string{
 				ingtypes.BackDenylistSourceRange:     "192.168.95.0/24",
 				ingtypes.BackDenylistEnforcementMode: "silent-drop",
 			},
-			expDenyDrop: true,
+			expDenyMode: "silent-drop",
 		},
-		// 5
+		// 6
 		{
 			ann: map[string]string{
 				ingtypes.BackAllowlistSourceRange:     "10.0.0.0/8",
@@ -3340,16 +3348,16 @@ WARN ignoring invalid enforcement mode 'silent_drop' on ingress 'default/ing1', 
 			logging: `
 WARN ignoring invalid enforcement mode 'drop' on ingress 'default/ing1', using 'deny' instead`,
 		},
-		// 6
+		// 7
 		{
 			ann: map[string]string{
 				ingtypes.BackAllowlistSourceRange:     "10.0.0.0/8",
 				ingtypes.BackAllowlistEnforcementMode: "silent-drop",
 				ingtypes.BackDenylistSourceRange:      "192.168.95.0/24",
-				ingtypes.BackDenylistEnforcementMode:  "silent-drop",
+				ingtypes.BackDenylistEnforcementMode:  "reject",
 			},
-			expAllowDrop: true,
-			expDenyDrop:  true,
+			expAllowMode: "silent-drop",
+			expDenyMode:  "reject",
 		},
 	}
 	source := &Source{Namespace: "default", Name: "ing1", Type: "ingress"}
@@ -3357,9 +3365,15 @@ WARN ignoring invalid enforcement mode 'drop' on ingress 'default/ing1', using '
 		c := setup(t)
 		d := c.createBackendMappingData("default/app", source, map[string]string{}, map[string]map[string]string{"/": test.ann}, []string{"/"})
 		c.createUpdater().buildBackendWhitelistHTTP(d)
+		if test.expAllowMode == "" {
+			test.expAllowMode = "deny"
+		}
+		if test.expDenyMode == "" {
+			test.expDenyMode = "deny"
+		}
 		path := d.backend.Paths[0]
-		c.compareObjects("allowlist enforcement mode", i, path.AllowedIPHTTP.SilentDrop, test.expAllowDrop)
-		c.compareObjects("denylist enforcement mode", i, path.DeniedIPHTTP.SilentDrop, test.expDenyDrop)
+		c.compareObjects("allowlist enforcement mode", i, path.AllowedIPHTTP.EnforcementMode, test.expAllowMode)
+		c.compareObjects("denylist enforcement mode", i, path.DeniedIPHTTP.EnforcementMode, test.expDenyMode)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}
