@@ -849,6 +849,7 @@ type AccessConfig struct {
 	Rule         []string
 	Exception    []string
 	SourceHeader string
+	SilentDrop   bool
 }
 
 // RewriteConfig ...

@@ -660,6 +660,31 @@ d1.local#/app path01
 d1.local#/api path02`,
 			},
 		},
+		"test27silentdrop": {
+			doconfig: func(c *testConfig, h *hatypes.Host, b *hatypes.Backend) {
+				h.FindPath("/app1")[0].AllowedIPHTTP.Rule = []string{"10.0.0.0/8"}
+				h.FindPath("/app1")[0].AllowedIPHTTP.Exception = []string{"10.0.110.0/24"}
+				h.FindPath("/app1")[0].AllowedIPHTTP.SilentDrop = true
+				h.FindPath("/app2")[0].DeniedIPHTTP.Rule = []string{"192.168.95.0/24"}
+				h.FindPath("/app2")[0].DeniedIPHTTP.SilentDrop = true
+			},
+			path: []string{"/app1", "/app2"},
+			expected: `
+    # path01 = d1.local/app1
+    # path02 = d1.local/app2
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_front_http_req__begin.map)
+    acl allow_rule_src0 src 10.0.0.0/8
+    acl allow_exception_src0 src 10.0.110.0/24
+    http-request silent-drop if { var(txn.pathID) -m str path01 } allow_exception_src0
+    http-request silent-drop if { var(txn.pathID) -m str path01 } !allow_rule_src0
+    acl deny_rule_src1 src 192.168.95.0/24
+    http-request silent-drop if { var(txn.pathID) -m str path02 } deny_rule_src1`,
+			expCheck: map[string]string{
+				"_back_d1_app_8080_front_http_req__begin.map": `
+d1.local#/app2 path02
+d1.local#/app1 path01`,
+			},
+		},
 		"test28": {
 			doconfig: func(c *testConfig, h *hatypes.Host, b *hatypes.Backend) {
 				b.AllowedIPTCP.Rule = []string{"10.0.0.0/8", "192.168.0.0/16"}
@@ -691,6 +716,20 @@ d1.local#/api path02`,
     acl deny_rule_tcp src 10.0.0.0/8 192.168.0.0/16
     acl deny_exception_tcp src 192.168.95.0/24
     tcp-request content reject if deny_rule_tcp !deny_exception_tcp`,
+		},
+		"test30silentdrop": {
+			doconfig: func(c *testConfig, h *hatypes.Host, b *hatypes.Backend) {
+				b.AllowedIPTCP.Rule = []string{"10.0.0.0/8"}
+				b.AllowedIPTCP.SilentDrop = true
+				b.DeniedIPTCP.Rule = []string{"192.168.95.0/24"}
+				b.DeniedIPTCP.SilentDrop = true
+				b.ModeTCP = true
+			},
+			expected: `
+    acl allow_rule_tcp src 10.0.0.0/8
+    acl deny_rule_tcp src 192.168.95.0/24
+    tcp-request content silent-drop if !allow_rule_tcp
+    tcp-request content silent-drop if deny_rule_tcp`,
 		},
 		"test31": {
 			doconfig: func(c *testConfig, h *hatypes.Host, b *hatypes.Backend) {

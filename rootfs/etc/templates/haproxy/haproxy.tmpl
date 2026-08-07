@@ -415,14 +415,18 @@ backend {{ $backend.ID }}
 {{- range $e1 := short 10 $backend.DeniedIPTCP.Exception }}
     acl deny_exception_tcp src{{ range $e := $e1 }} {{ $e }}{{ end }}
 {{- end }}
+{{- $allowActionTCP := "reject" }}
+{{- if $backend.AllowedIPTCP.SilentDrop }}{{ $allowActionTCP = "silent-drop" }}{{ end }}
+{{- $denyActionTCP := "reject" }}
+{{- if $backend.DeniedIPTCP.SilentDrop }}{{ $denyActionTCP = "silent-drop" }}{{ end }}
 {{- if $backend.AllowedIPTCP.Exception }}
-    tcp-request content reject if allow_exception_tcp
+    tcp-request content {{ $allowActionTCP }} if allow_exception_tcp
 {{- end }}
 {{- if $backend.AllowedIPTCP.Rule }}
-    tcp-request content reject if !allow_rule_tcp
+    tcp-request content {{ $allowActionTCP }} if !allow_rule_tcp
 {{- end }}
 {{- if or $backend.DeniedIPTCP.Rule $backend.DeniedIPTCP.Exception }}
-    tcp-request content reject if
+    tcp-request content {{ $denyActionTCP }} if
         {{- if $backend.DeniedIPTCP.Rule }} deny_rule_tcp{{ end }}
         {{- if $backend.DeniedIPTCP.Exception }} !deny_exception_tcp{{ end }}
 {{- end }}
@@ -596,14 +600,16 @@ backend {{ $backend.ID }}
 {{- if $allow.SourceHeader }}
     http-request set-src hdr({{ $allow.SourceHeader }})
 {{- end }}
+{{- $allowAction := "deny" }}
+{{- if $allow.SilentDrop }}{{ $allowAction = "silent-drop" }}{{ end }}
 {{- range $pathIDs := $allowCfg.PathIDs $i }}
 {{- if $allow.Exception }}
-    http-request deny if
+    http-request {{ $allowAction }} if
         {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
         {{- "" }} allow_exception_src{{ $i }}
 {{- end }}
 {{- if $allow.Rule }}
-    http-request deny if
+    http-request {{ $allowAction }} if
         {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
         {{- "" }} !allow_rule_src{{ $i }}
 {{- end }}
@@ -617,8 +623,10 @@ backend {{ $backend.ID }}
 {{- range $e1 := short 10 $deny.Exception }}
     acl deny_exception_src{{ $i }} src{{ range $e := $e1 }} {{ $e }}{{ end }}
 {{- end }}
+{{- $denyAction := "deny" }}
+{{- if $deny.SilentDrop }}{{ $denyAction = "silent-drop" }}{{ end }}
 {{- range $pathIDs := $denyCfg.PathIDs $i }}
-    http-request deny if
+    http-request {{ $denyAction }} if
         {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
         {{- if $deny.Rule }} deny_rule_src{{ $i }}{{ end }}
         {{- if $deny.Exception }} !deny_exception_src{{ $i }}{{ end }}

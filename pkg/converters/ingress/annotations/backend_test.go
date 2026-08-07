@@ -3286,6 +3286,85 @@ WARN both allowlist and whitelist were used on ingress 'default/ing1', ignoring 
 	}
 }
 
+func TestAccessEnforcementMode(t *testing.T) {
+	testCases := []struct {
+		ann          map[string]string
+		expAllowDrop bool
+		expDenyDrop  bool
+		logging      string
+	}{
+		// 0
+		{
+			ann: map[string]string{
+				ingtypes.BackAllowlistSourceRange: "10.0.0.0/8",
+			},
+		},
+		// 1
+		{
+			ann: map[string]string{
+				ingtypes.BackAllowlistSourceRange:     "10.0.0.0/8",
+				ingtypes.BackAllowlistEnforcementMode: "deny",
+			},
+		},
+		// 2
+		{
+			ann: map[string]string{
+				ingtypes.BackAllowlistSourceRange:     "10.0.0.0/8",
+				ingtypes.BackAllowlistEnforcementMode: "silent-drop",
+			},
+			expAllowDrop: true,
+		},
+		// 3
+		{
+			ann: map[string]string{
+				ingtypes.BackAllowlistSourceRange:     "10.0.0.0/8",
+				ingtypes.BackAllowlistEnforcementMode: "silent_drop",
+			},
+			logging: `
+WARN ignoring invalid enforcement mode 'silent_drop' on ingress 'default/ing1', using 'deny' instead`,
+		},
+		// 4
+		{
+			ann: map[string]string{
+				ingtypes.BackDenylistSourceRange:     "192.168.95.0/24",
+				ingtypes.BackDenylistEnforcementMode: "silent-drop",
+			},
+			expDenyDrop: true,
+		},
+		// 5
+		{
+			ann: map[string]string{
+				ingtypes.BackAllowlistSourceRange:     "10.0.0.0/8",
+				ingtypes.BackAllowlistEnforcementMode: "drop",
+			},
+			logging: `
+WARN ignoring invalid enforcement mode 'drop' on ingress 'default/ing1', using 'deny' instead`,
+		},
+		// 6
+		{
+			ann: map[string]string{
+				ingtypes.BackAllowlistSourceRange:     "10.0.0.0/8",
+				ingtypes.BackAllowlistEnforcementMode: "silent-drop",
+				ingtypes.BackDenylistSourceRange:      "192.168.95.0/24",
+				ingtypes.BackDenylistEnforcementMode:  "silent-drop",
+			},
+			expAllowDrop: true,
+			expDenyDrop:  true,
+		},
+	}
+	source := &Source{Namespace: "default", Name: "ing1", Type: "ingress"}
+	for i, test := range testCases {
+		c := setup(t)
+		d := c.createBackendMappingData("default/app", source, map[string]string{}, map[string]map[string]string{"/": test.ann}, []string{"/"})
+		c.createUpdater().buildBackendWhitelistHTTP(d)
+		path := d.backend.Paths[0]
+		c.compareObjects("allowlist enforcement mode", i, path.AllowedIPHTTP.SilentDrop, test.expAllowDrop)
+		c.compareObjects("denylist enforcement mode", i, path.DeniedIPHTTP.SilentDrop, test.expDenyDrop)
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}
+
 func TestWhitelistTCP(t *testing.T) {
 	testCase := []struct {
 		cidrlist string
