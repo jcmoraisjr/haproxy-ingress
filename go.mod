@@ -14,7 +14,7 @@ require (
 	github.com/kylelemons/godebug v1.1.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/prometheus/client_golang v1.24.1
-	github.com/stretchr/testify v1.11.1
+	github.com/stretchr/testify v1.12.0
 	go.uber.org/zap v1.28.0
 	golang.org/x/crypto v0.55.0
 	golang.org/x/sync v0.22.0
