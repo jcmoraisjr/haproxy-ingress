@@ -3286,6 +3286,99 @@ WARN both allowlist and whitelist were used on ingress 'default/ing1', ignoring 
 	}
 }
 
+func TestAccessEnforcementMode(t *testing.T) {
+	testCases := []struct {
+		ann          map[string]string
+		expAllowMode string
+		expDenyMode  string
+		logging      string
+	}{
+		// 0
+		{
+			ann: map[string]string{
+				ingtypes.BackAllowlistSourceRange: "10.0.0.0/8",
+			},
+		},
+		// 1
+		{
+			ann: map[string]string{
+				ingtypes.BackAllowlistSourceRange:     "10.0.0.0/8",
+				ingtypes.BackAllowlistEnforcementMode: "deny",
+			},
+		},
+		// 2
+		{
+			ann: map[string]string{
+				ingtypes.BackAllowlistSourceRange:     "10.0.0.0/8",
+				ingtypes.BackAllowlistEnforcementMode: "silent-drop",
+			},
+			expAllowMode: "silent-drop",
+		},
+		// 3
+		{
+			ann: map[string]string{
+				ingtypes.BackAllowlistSourceRange:     "10.0.0.0/8",
+				ingtypes.BackAllowlistEnforcementMode: "reject",
+			},
+			expAllowMode: "reject",
+		},
+		// 4
+		{
+			ann: map[string]string{
+				ingtypes.BackAllowlistSourceRange:     "10.0.0.0/8",
+				ingtypes.BackAllowlistEnforcementMode: "silent_drop",
+			},
+			logging: `
+WARN ignoring invalid enforcement mode 'silent_drop' on ingress 'default/ing1', using 'deny' instead`,
+		},
+		// 5
+		{
+			ann: map[string]string{
+				ingtypes.BackDenylistSourceRange:     "192.168.95.0/24",
+				ingtypes.BackDenylistEnforcementMode: "silent-drop",
+			},
+			expDenyMode: "silent-drop",
+		},
+		// 6
+		{
+			ann: map[string]string{
+				ingtypes.BackAllowlistSourceRange:     "10.0.0.0/8",
+				ingtypes.BackAllowlistEnforcementMode: "drop",
+			},
+			logging: `
+WARN ignoring invalid enforcement mode 'drop' on ingress 'default/ing1', using 'deny' instead`,
+		},
+		// 7
+		{
+			ann: map[string]string{
+				ingtypes.BackAllowlistSourceRange:     "10.0.0.0/8",
+				ingtypes.BackAllowlistEnforcementMode: "silent-drop",
+				ingtypes.BackDenylistSourceRange:      "192.168.95.0/24",
+				ingtypes.BackDenylistEnforcementMode:  "reject",
+			},
+			expAllowMode: "silent-drop",
+			expDenyMode:  "reject",
+		},
+	}
+	source := &Source{Namespace: "default", Name: "ing1", Type: "ingress"}
+	for i, test := range testCases {
+		c := setup(t)
+		d := c.createBackendMappingData("default/app", source, map[string]string{}, map[string]map[string]string{"/": test.ann}, []string{"/"})
+		c.createUpdater().buildBackendWhitelistHTTP(d)
+		if test.expAllowMode == "" {
+			test.expAllowMode = "deny"
+		}
+		if test.expDenyMode == "" {
+			test.expDenyMode = "deny"
+		}
+		path := d.backend.Paths[0]
+		c.compareObjects("allowlist enforcement mode", i, path.AllowedIPHTTP.EnforcementMode, test.expAllowMode)
+		c.compareObjects("denylist enforcement mode", i, path.DeniedIPHTTP.EnforcementMode, test.expDenyMode)
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}
+
 func TestWhitelistTCP(t *testing.T) {
 	testCase := []struct {
 		cidrlist string

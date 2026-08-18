@@ -295,6 +295,7 @@ The table below describes all supported configuration keys.
 | [`agent-check-port`](#agent-check)                   | backend agent listen port               | Backend  |                                  |
 | [`agent-check-send`](#agent-check)                   | string to send upon agent connection    | Backend  |                                  |
 | [`allow-local-bind`](#bind)                          | [true\|false]                           | Global   | `false`                          |
+| [`allowlist-enforcement-mode`](#allowlist)           | [deny\|reject\|silent-drop]              | Path     | `deny`                           |
 | [`allowlist-source-range`](#allowlist)               | Comma-separated IPs or CIDRs            | Path     |                                  |
 | [`allowlist-source-header`](#allowlist)              | Header name that will be used as a src  | Path     |                                  |
 | [`app-root`](#app-root)                              | /url                                    | Host     |                                  |
@@ -365,6 +366,7 @@ The table below describes all supported configuration keys.
 | [`cross-namespace-services`](#cross-namespace)       | [allow\|deny]                           | Global   | `deny`                           |
 | [`default-backend-redirect`](#default-redirect)      | Location                                | Global   |                                  |
 | [`default-backend-redirect-code`](#default-redirect) | HTTP status code                        | Global   | `302`                            |
+| [`denylist-enforcement-mode`](#allowlist)            | [deny\|reject\|silent-drop]              | Path     | `deny`                           |
 | [`denylist-source-range`](#allowlist)                | Comma-separated IPs or CIDRs            | Path     |                                  |
 | [`dns-accepted-payload-size`](#dns-resolvers)        | number                                  | Global   | `8192`                           |
 | [`dns-cluster-domain`](#dns-resolvers)               | cluster name                            | Global   | `cluster.local`                  |
@@ -699,12 +701,14 @@ See also:
 
 ### Allowlist
 
-| Configuration key        | Scope  | Default | Since   |
-|--------------------------|--------|---------|---------|
-| `allowlist-source-range` | `Path` |         | v0.12   |
-| `denylist-source-range`  | `Path` |         | v0.12   |
-| `whitelist-source-range` | `Path` |         |         |
-| `allowlist-source-header`| `Path` |         | v0.13.2 |
+| Configuration key            | Scope  | Default | Since   |
+|------------------------------|--------|---------|---------|
+| `allowlist-enforcement-mode` | `Path` | `deny`  | v0.17   |
+| `allowlist-source-range`     | `Path` |         | v0.12   |
+| `denylist-enforcement-mode`  | `Path` | `deny`  | v0.17   |
+| `denylist-source-range`      | `Path` |         | v0.12   |
+| `whitelist-source-range`     | `Path` |         |         |
+| `allowlist-source-header`    | `Path` |         | v0.13.2 |
 
 Defines a comma-separated list of source IPs or CIDRs allowed or denied to connect.
 The default behavior is to allow all source IPs if neither the allow list nor the
@@ -730,6 +734,19 @@ be allowed.
 taken in order to compare with the allow and deny list. If not defined a normal source
 will be used. This option is useful when ingress is hidden behind reverse proxy but you
 still want to control access to separate paths from ingress configuration.
+* `allowlist-enforcement-mode` and `denylist-enforcement-mode`: Used to define what
+HAProxy should do with a request rejected by the allow list or the deny list,
+respectively:
+  * `deny`, the default value, responds `403 Forbidden` on HTTP requests.
+  * `reject` closes the connection immediately without sending any HTTP response.
+  * `silent-drop` discards the request without letting the client know the
+  connection was dropped, in the same way the [WAF](#waf) does when configured to
+  drop requests: no packet is sent back, so the client keeps waiting until its own
+  timeout expires, which slows down port scanners and misbehaving clients.
+
+  On TCP services `deny` and `reject` behave the same, rejecting the connection
+  during content inspection, while `silent-drop` kills the connection without
+  notifying the client.
 
 Allowlist and denylist can be used together. The request will be denied if the
 configurations overlap and a source IP matches both the allowlist and denylist.
@@ -742,6 +759,7 @@ the selected header can be trusted!
 See also:
 
 * https://docs.haproxy.org/3.0/configuration.html#4-deny
+* https://docs.haproxy.org/3.0/configuration.html#4-silent-drop
 * https://docs.haproxy.org/3.0/configuration.html#4-set-src
 
 ---
