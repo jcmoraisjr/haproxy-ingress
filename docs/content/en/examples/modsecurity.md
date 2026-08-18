@@ -95,8 +95,8 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    haproxy-ingress.github.io/ssl-redirect: "false"
-    haproxy-ingress.github.io/waf: "modsecurity"
+    n42-gateway.github.io/ssl-redirect: "false"
+    n42-gateway.github.io/waf: "modsecurity"
   name: echo
 spec:
   rules:

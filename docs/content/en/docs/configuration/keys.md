@@ -98,9 +98,9 @@ Annotations are read in the following conditions:
 * From `Services` that classified Ingress resources are linking to. `Services` only accept keys from the `Backend` scope.
 
 A configuration key needs a prefix in front of its name to use as an annotation key.
-The default prefix is `haproxy-ingress.github.io`, and `ingress.kubernetes.io` is also
-supported for backward compatibility. Change the prefix with the
-[`--annotations-prefix`]({{% relref "command-line#annotations-prefix" %}})
+The default prefix is `n42-gateway.github.io`. By default, `haproxy-ingress.github.io`
+and `ingress.kubernetes.io` are also supported for backward compatibility. Change the
+prefix with the [`--annotations-prefix`]({{% relref "command-line#annotations-prefix" %}})
 command-line option. The annotation value spec expects a string as the key value, so
 declare numbers and booleans as strings, N42 Gateway will convert them when needed.
 
@@ -109,9 +109,9 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    haproxy-ingress.github.io/balance-algorithm: roundrobin
-    haproxy-ingress.github.io/maxconn-server: "500"
-    haproxy-ingress.github.io/ssl-redirect: "false"
+    n42-gateway.github.io/balance-algorithm: roundrobin
+    n42-gateway.github.io/maxconn-server: "500"
+    n42-gateway.github.io/ssl-redirect: "false"
   name: app
   namespace: default
 spec:
@@ -205,7 +205,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    haproxy-ingress.github.io/rewrite-target: /
+    n42-gateway.github.io/rewrite-target: /
   name: app-back
 spec:
   rules:
@@ -578,7 +578,7 @@ and certificate signing, and will also start a leader election to define which
 N42 Gateway instance should perform authorizations and certificate signing.
 
 The N42 Gateway leader tracks ingress objects that declares the annotation
-`haproxy-ingress.github.io/cert-signer` with value `acme` and a configured secret name for
+`n42-gateway.github.io/cert-signer` with value `acme` and a configured secret name for
 TLS certificate. The annotation `kubernetes.io/tls-acme` with value `"true"` will also
 be used if the command-line option `--acme-track-tls-annotation` is declared. The
 secret does not need to exist. A new certificate will be issued if the certificate is
@@ -1341,7 +1341,7 @@ Annotations:
 
 ```yaml
     annotations:
-      haproxy-ingress.github.io/config-backend: |
+      n42-gateway.github.io/config-backend: |
         acl bar-url path /bar
         http-request deny if bar-url
         http-request set-var(txn.path) path
@@ -1351,7 +1351,7 @@ Annotations:
 
 ```yaml
     annotations:
-      haproxy-ingress.github.io/config-backend-early: |
+      n42-gateway.github.io/config-backend-early: |
         stick-table type ip size 100k expire 1m store http_req_rate(10s)
         http-request track-sc1 src
         http-request deny if { sc1_http_req_rate gt 100 } # average of 10rps per source IP, over the last 10s
@@ -1359,13 +1359,13 @@ Annotations:
 
 ```yaml
     annotations:
-      haproxy-ingress.github.io/config-backend-late: |
+      n42-gateway.github.io/config-backend-late: |
         http-request deny if { path /internal }
 ```
 
 ```yaml
     annotations:
-      haproxy-ingress.github.io/config-tcp-service: |
+      n42-gateway.github.io/config-tcp-service: |
         timeout client 1m
         timeout connect 15s
 ```
@@ -1701,8 +1701,8 @@ Configuration example:
 
 ```yaml
     annotations:
-      haproxy-ingress.github.io/response-del-headers: x-userid,server
-      haproxy-ingress.github.io/headers: |
+      n42-gateway.github.io/response-del-headers: x-userid,server
+      n42-gateway.github.io/headers: |
         x-path: /
         host: %[service].%[namespace].svc.cluster.local
 ```
@@ -1832,7 +1832,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    haproxy-ingress.github.io/http-frontend: "Front8"
+    n42-gateway.github.io/http-frontend: "Front8"
     ...
   name: app
   namespace: default
@@ -1864,14 +1864,14 @@ Match the header `X-Env` with value `staging` - header name is case-insensitive,
 
 ```yaml
     annotations:
-      haproxy-ingress.github.io/http-header-match: "X-Env: staging"
+      n42-gateway.github.io/http-header-match: "X-Env: staging"
 ```
 
 Match the header `X-Env` with value `staging`, and header `X-User` with value `admin`:
 
 ```yaml
     annotations:
-      haproxy-ingress.github.io/http-header-match: |
+      n42-gateway.github.io/http-header-match: |
         X-Env: staging
         X-User: admin
 ```
@@ -1880,7 +1880,7 @@ Match the header `X-Env` with value that matches the regex `^(test|staging)$`:
 
 ```yaml
     annotations:
-      haproxy-ingress.github.io/http-header-match-regex: |
+      n42-gateway.github.io/http-header-match-regex: |
         X-Env: ^(test|staging)$
 ```
 
@@ -2355,9 +2355,9 @@ Backends can be configured via Ingress or Service annotations:
 
 ```yaml
     annotations:
-      haproxy-ingress.github.io/peers-table: |
+      n42-gateway.github.io/peers-table: |
         stick-table type ip size 100k expire 1m peers ingress store http_req_rate(10s)
-      haproxy-ingress.github.io/config-backend-early: |
+      n42-gateway.github.io/config-backend-early: |
         ...
         http-request track-sc1 src table %[peers_table_backend]
         http-request deny if { src,lua.peers_sum(%[peers_group_backend],http_req_rate) gt 100 }
@@ -2486,7 +2486,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    haproxy-ingress.github.io/redirect-from: "app.local"
+    n42-gateway.github.io/redirect-from: "app.local"
   name: app
 spec:
   rules:
@@ -2521,7 +2521,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    haproxy-ingress.github.io/redirect-to: "https://www.app.local/login"
+    n42-gateway.github.io/redirect-to: "https://www.app.local/login"
   name: app
 spec:
   rules:

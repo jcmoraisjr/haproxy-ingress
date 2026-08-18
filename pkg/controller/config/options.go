@@ -24,7 +24,7 @@ func NewOptions() *Options {
 		AcmeTokenConfigMapName:  "acme-validation-tokens",
 		BucketsResponseTime:     []float64{.0005, .001, .002, .005, .01},
 		IPMode:                  "auto",
-		AnnPrefix:               "haproxy-ingress.github.io,ingress.kubernetes.io",
+		AnnPrefix:               "n42-gateway.github.io,haproxy-ingress.github.io,ingress.kubernetes.io",
 		RateLimitUpdate:         0.5,
 		WaitBeforeUpdate:        200 * time.Millisecond,
 		ReloadRetry:             30 * time.Second,

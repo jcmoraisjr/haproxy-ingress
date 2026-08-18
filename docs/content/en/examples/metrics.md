@@ -147,7 +147,7 @@ kubectl --namespace default scale deploy dory --replicas=4
 kubectl --namespace default expose deploy dory --port 8000
 kubectl --namespace default create ingress dory\
   --class=haproxy\
-  --annotation haproxy-ingress.github.io/ssl-redirect=false\
+  --annotation n42-gateway.github.io/ssl-redirect=false\
   --rule="dory.localdomain/*=dory:8000,tls=dory"
 ```
 

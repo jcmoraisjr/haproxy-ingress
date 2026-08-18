@@ -80,8 +80,8 @@ func createEndpointSlices(endpointSlices []*discoveryv1.EndpointSlice, svcPort *
 	for _, endpointSlice := range endpointSlices {
 		var loopbackEndpoint, portsAsReplicas bool
 		if ann := endpointSlice.GetAnnotations(); ann != nil {
-			loopbackEndpoint = ann["internal.haproxy-ingress.github.io/loopbackv4-endpoint"] == "1"
-			portsAsReplicas = ann["internal.haproxy-ingress.github.io/ports-as-replicas"] == "1"
+			loopbackEndpoint = ann["internal.n42-gateway.github.io/loopbackv4-endpoint"] == "1"
+			portsAsReplicas = ann["internal.n42-gateway.github.io/ports-as-replicas"] == "1"
 		}
 		for _, epPort := range endpointSlice.Ports {
 			if portsAsReplicas {

@@ -1993,20 +1993,21 @@ func TestAnnPrefix(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
-	prefix1 := "haproxy-ingress.github.io"
-	prefix2 := "ingress.kubernetes.io"
-	prefix3 := "haproxy"
+	prefix1 := "n42-gateway.github.io"
+	prefix2 := "haproxy-ingress.github.io"
+	prefix3 := "ingress.kubernetes.io"
+	prefix4 := "haproxy"
 
 	c.cache.SecretTLSPath["system/default"] = "/tls/tls-default.pem"
 	conv := c.createConverter()
-	conv.options.AnnotationPrefix = []string{prefix1, prefix2, prefix3}
+	conv.options.AnnotationPrefix = []string{prefix1, prefix2, prefix3, prefix4}
 
 	c.createSvc1Auto()
 	c.SyncConverter(
 		conv,
 		c.createIng1Ann("default/app1", "app.local", "/", "echo:8080", map[string]string{
-			prefix3 + "/" + ingtypes.HostAppRoot:          "true",
-			prefix2 + "/" + ingtypes.BackBalanceAlgorithm: "leastconn",
+			prefix4 + "/" + ingtypes.HostAppRoot:          "true",
+			prefix3 + "/" + ingtypes.BackBalanceAlgorithm: "leastconn",
 			prefix1 + "/" + ingtypes.BackBalanceAlgorithm: "random",
 			prefix3 + "/" + ingtypes.BackMaxconnServer:    "1000",
 			prefix2 + "/" + ingtypes.BackMaxconnServer:    "1000",

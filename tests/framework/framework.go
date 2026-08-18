@@ -58,8 +58,8 @@ import (
 )
 
 const (
-	AnnotationPrefix = "haproxy-ingress.github.io/"
-	LocalFSPrefix    = "/tmp/haproxy-ingress"
+	AnnotationPrefix = "n42-gateway.github.io/"
+	LocalFSPrefix    = "/tmp/n42-gateway"
 
 	PublishSvcName  = "default/publish"
 	PublishAddress  = "10.0.1.1"
@@ -234,7 +234,7 @@ func (f *framework) StartController(ctx context.Context, t *testing.T) {
 
 	opt := ctrlconfig.NewOptions()
 	opt.MasterWorker = true
-	opt.LocalFSPrefix = "/tmp/haproxy-ingress"
+	opt.LocalFSPrefix = LocalFSPrefix
 	opt.PublishService = PublishSvcName
 	opt.ConfigMap = GlobalConfigMap.String()
 	// Our Request() method and EndpointSlice configuration currently uses IPv4 address only
@@ -272,7 +272,7 @@ func (f *framework) StartController(ctx context.Context, t *testing.T) {
 		assert.NoError(collect, err)
 	}, CommonTimeout, CommonInterval)
 
-	f.admSock = socket.NewSocket(ctx, "/tmp/haproxy-ingress/var/run/haproxy/admin.sock", CommonTimeout, false)
+	f.admSock = socket.NewSocket(ctx, LocalFSPrefix+"/var/run/haproxy/admin.sock", CommonTimeout, false)
 }
 
 type Response struct {
@@ -689,9 +689,9 @@ ports: []
 	eps := f.CreateObject(t, data).(*discoveryv1.EndpointSlice)
 	eps.GenerateName = svc.Name + "-"
 	if portsAsReplicas {
-		eps.Annotations["internal.haproxy-ingress.github.io/ports-as-replicas"] = "1"
+		eps.Annotations["internal.n42-gateway.github.io/ports-as-replicas"] = "1"
 	} else {
-		eps.Annotations["internal.haproxy-ingress.github.io/loopbackv4-endpoint"] = "1"
+		eps.Annotations["internal.n42-gateway.github.io/loopbackv4-endpoint"] = "1"
 	}
 	eps.Labels["kubernetes.io/service-name"] = svc.Name
 	for _, svcport := range svc.Spec.Ports {

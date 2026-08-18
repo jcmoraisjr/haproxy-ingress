@@ -188,13 +188,13 @@ func TestWrite(t *testing.T) {
 				{
 					content: "{{ .Name }}",
 					outputs: []string{""},
-					logging: `ERROR from writer: cannot write /tmp/haproxy-ingress/cannot/stat/here/h1.cfg: open /tmp/haproxy-ingress/cannot/stat/here/h1.cfg: no such file or directory`,
+					logging: `ERROR from writer: cannot write /tmp/n42-gateway/cannot/stat/here/h1.cfg: open /tmp/n42-gateway/cannot/stat/here/h1.cfg: no such file or directory`,
 				},
 			},
 			datas: []interface{}{
 				data1{Name: "joe1"},
 			},
-			tempdir: "/tmp/haproxy-ingress/cannot/stat/here",
+			tempdir: "/tmp/n42-gateway/cannot/stat/here",
 		},
 		// 9
 		{

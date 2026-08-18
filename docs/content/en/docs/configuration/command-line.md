@@ -19,7 +19,7 @@ The following command-line options are supported:
 | [`--acme-token-configmap-name`](#acme)                  | [namespace]/configmap-name | `acme-validation-tokens` | v0.9 |
 | [`--acme-track-tls-annotation`](#acme)                  | [true\|false]              | `false`                 | v0.9  |
 | [`--allow-cross-namespace`](#allow-cross-namespace)     | [true\|false]              | `false`                 |       |
-| [`--annotations-prefix`](#annotations-prefix)           | prefix list without `/`    | `haproxy-ingress.github.io,ingress.kubernetes.io` | v0.8  |
+| [`--annotations-prefix`](#annotations-prefix)           | prefix list without `/`    | `n42-gateway.github.io,`<br/>`haproxy-ingress.github.io,`<br/>`ingress.kubernetes.io` | v0.8  |
 | [`--apiserver-host`](#apiserver-host)                   | address of K8s API server  |                         |       |
 | [`--backend-shards`](#backend-shards)                   | int                        | `0`                     | v0.11 |
 | [`--buckets-response-time`](#buckets-response-time)     | float64 slice           | `.0005,.001,.002,.005,.01` | v0.10 |
@@ -118,7 +118,7 @@ See also:
 
 `--allow-cross-namespace` argument, if added, will allow reading secrets from one namespace to an
 ingress resource of another namespace. The default behavior is to deny such cross namespace reading.
-This adds a breaking change from `v0.4` to `v0.5` on `haproxy-ingress.github.io/auth-tls-secret`
+This adds a breaking change from `v0.4` to `v0.5` on `n42-gateway.github.io/auth-tls-secret`
 annotation, where cross namespace reading were allowed without any configuration.
 
 See also:
@@ -132,9 +132,12 @@ See also:
 * `--annotations-prefix`
 
 Configures a comma-separated list of annotations prefix that the controller should look for when
-parsing services and ingress objects. The default value is `haproxy-ingress.github.io,ingress.kubernetes.io`.
-The default configuration means declare eg a SSL Redirect annotation with
-`haproxy-ingress.github.io/ssl-redirect: "true"` or `ingress.kubernetes.io/ssl-redirect: "true"`.
+parsing services and ingress objects. The default value is `n42-gateway.github.io,haproxy-ingress.github.io,ingress.kubernetes.io`.
+The default configuration means that any of the following configurations will declare SSL Redirect as `true`:
+
+* `n42-gateway.github.io/ssl-redirect: "true"`
+* `haproxy-ingress.github.io/ssl-redirect: "true"`
+* `ingress.kubernetes.io/ssl-redirect: "true"`
 
 The order of the declaration is used to prioritize one of them if the same configuration key is
 declared twice - if two distinct prefix is used to configure the same key in the same ingress or
