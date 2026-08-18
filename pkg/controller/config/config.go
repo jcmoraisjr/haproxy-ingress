@@ -55,8 +55,8 @@ import (
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/version"
+	"github.com/n42-gateway/n42-gateway/pkg/utils"
+	"github.com/n42-gateway/n42-gateway/pkg/version"
 )
 
 // Create ...

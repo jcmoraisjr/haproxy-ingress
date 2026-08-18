@@ -1,4 +1,4 @@
-module github.com/jcmoraisjr/haproxy-ingress
+module github.com/n42-gateway/n42-gateway
 
 go 1.26.0
 

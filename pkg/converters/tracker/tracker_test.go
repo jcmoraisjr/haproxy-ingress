@@ -22,8 +22,9 @@ import (
 	"strings"
 	"testing"
 
-	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	"github.com/kylelemons/godebug/diff"
+
+	convtypes "github.com/n42-gateway/n42-gateway/pkg/converters/types"
 )
 
 func TestTrack(t *testing.T) {

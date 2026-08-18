@@ -21,8 +21,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/launch"
+	"github.com/n42-gateway/n42-gateway/pkg/controller/config"
+	"github.com/n42-gateway/n42-gateway/pkg/controller/launch"
 )
 
 func main() {

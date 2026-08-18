@@ -27,9 +27,9 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme/x/acme"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/version"
+	"github.com/n42-gateway/n42-gateway/pkg/acme/x/acme"
+	"github.com/n42-gateway/n42-gateway/pkg/types"
+	"github.com/n42-gateway/n42-gateway/pkg/version"
 )
 
 const (

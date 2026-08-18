@@ -28,7 +28,7 @@ import (
 	crleaderelection "sigs.k8s.io/controller-runtime/pkg/leaderelection"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
+	"github.com/n42-gateway/n42-gateway/pkg/controller/config"
 )
 
 const (

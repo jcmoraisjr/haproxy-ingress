@@ -3,7 +3,7 @@
 [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/) controller
 implementation for [HAProxy](http://www.haproxy.org/) loadbalancer.
 
-[![build](https://img.shields.io/github/actions/workflow/status/jcmoraisjr/haproxy-ingress/build.yaml?branch=master&logo=github)](https://github.com/jcmoraisjr/haproxy-ingress/actions/workflows/build.yaml) [![helm](https://img.shields.io/badge/helm%20chart-ready-blue?logo=helm)](https://artifacthub.io/packages/helm/haproxy-ingress/haproxy-ingress)
+[![build](https://img.shields.io/github/actions/workflow/status/n42-gateway/n42-gateway/build.yaml?branch=master&logo=github)](https://github.com/n42-gateway/n42-gateway/actions/workflows/build.yaml) [![helm](https://img.shields.io/badge/helm%20chart-ready-blue?logo=helm)](https://artifacthub.io/packages/helm/haproxy-ingress/haproxy-ingress)
 
 HAProxy Ingress is a Kubernetes ingress controller: it configures a HAProxy instance
 to route incoming requests from an external network to the in-cluster applications.
@@ -14,9 +14,9 @@ Updates made to the cluster are applied on the fly to the HAProxy instance.
 
 **Documentation:**
 
-* Getting started guide: [/docs/getting-started/](https://haproxy-ingress.github.io/docs/getting-started/)
-* Global and per ingress/service configuration keys: [/docs/configuration/keys/](https://haproxy-ingress.github.io/docs/configuration/keys/)
-* Command-line options: [/docs/configuration/command-line/](https://haproxy-ingress.github.io/docs/configuration/command-line/)
+* Getting started guide: [/docs/getting-started/](https://n42-gateway.github.io/docs/getting-started/)
+* Global and per ingress/service configuration keys: [/docs/configuration/keys/](https://n42-gateway.github.io/docs/configuration/keys/)
+* Command-line options: [/docs/configuration/command-line/](https://n42-gateway.github.io/docs/configuration/command-line/)
 
 **Supported versions:**
 
@@ -30,7 +30,7 @@ Updates made to the cluster are applied on the fly to the HAProxy instance.
 
 * Beta quality versions (`beta` / `canary` tags) has some new, but battle tested features, usually running on some of our production clusters
 * Development versions (`alpha` / `snapshot` tags) has major changes with few tests, usually not recommended for production
-* (*) Minimum supported HAProxy version if using an [external HAProxy](https://haproxy-ingress.github.io/docs/examples/external-haproxy/) instance
+* (*) Minimum supported HAProxy version if using an [external HAProxy](https://n42-gateway.github.io/docs/examples/external-haproxy/) instance
 
 **Community:**
 
@@ -40,14 +40,14 @@ Updates made to the cluster are applied on the fly to the HAProxy instance.
 
 ## Develop HAProxy Ingress
 
-The instructions below are valid for v0.14 and newer. See [v0.13](https://github.com/jcmoraisjr/haproxy-ingress/blob/release-0.13/README.md#develop-haproxy-ingress) branch for older versions.
+The instructions below are valid for v0.14 and newer. See [v0.13](https://github.com/n42-gateway/n42-gateway/blob/release-0.13/README.md#develop-haproxy-ingress) branch for older versions.
 
 **Building and running locally:**
 
 ```
 mkdir -p $GOPATH/src/github.com/jcmoraisjr
 cd $GOPATH/src/github.com/jcmoraisjr
-git clone https://github.com/jcmoraisjr/haproxy-ingress.git
+git clone https://github.com/n42-gateway/n42-gateway.git
 cd haproxy-ingress
 make run
 ```
@@ -76,7 +76,7 @@ make docker-build
 Deploy local image using Helm:
 
 ```
-helm repo add haproxy-ingress https://haproxy-ingress.github.io/charts
+helm repo add haproxy-ingress https://n42-gateway.github.io/charts
 helm install haproxy-ingress haproxy-ingress/haproxy-ingress\
   --create-namespace --namespace=ingress-controller\
   --set controller.image.repository=localhost/haproxy-ingress\

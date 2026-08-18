@@ -37,8 +37,8 @@ import (
 
 	api "k8s.io/api/core/v1"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
-	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
+	"github.com/n42-gateway/n42-gateway/pkg/controller/config"
+	convtypes "github.com/n42-gateway/n42-gateway/pkg/converters/types"
 )
 
 // CreateSSLCerts ...
@@ -163,7 +163,7 @@ func (s *SSL) buildCertFromCrtAndKey(fileName string, crt, key, ca []byte) (*ssl
 		// if the ca.crt key is configured in the same secret -
 		// cannot be used e.g. for mTLS.
 		//
-		// https://github.com/jcmoraisjr/haproxy-ingress/blob/release-0.13/pkg/common/net/ssl/ssl.go#L138
+		// https://github.com/n42-gateway/n42-gateway/blob/release-0.13/pkg/common/net/ssl/ssl.go#L138
 		//
 		if _, err := s.checkValidCertPEM(ca); err != nil {
 			return nil, err

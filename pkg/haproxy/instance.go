@@ -32,13 +32,13 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/socket"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/template"
-	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils/workqueue"
+	"github.com/n42-gateway/n42-gateway/pkg/acme"
+	"github.com/n42-gateway/n42-gateway/pkg/haproxy/socket"
+	"github.com/n42-gateway/n42-gateway/pkg/haproxy/template"
+	hatypes "github.com/n42-gateway/n42-gateway/pkg/haproxy/types"
+	"github.com/n42-gateway/n42-gateway/pkg/types"
+	"github.com/n42-gateway/n42-gateway/pkg/utils"
+	"github.com/n42-gateway/n42-gateway/pkg/utils/workqueue"
 )
 
 // InstanceOptions ...
@@ -279,7 +279,7 @@ func (i *instance) CalcIdleMetric() {
 		return
 	}
 	if idle < 0 || idle > 100 {
-		// https://github.com/jcmoraisjr/haproxy-ingress/issues/1452
+		// https://github.com/n42-gateway/n42-gateway/issues/1452
 		// https://github.com/haproxy/haproxy/issues/3339
 		i.logger.Warn("haproxy idle metric '%d' is out of bounds (0-100), skipping the scraped data to avoid an inaccurate metric", idle)
 		return

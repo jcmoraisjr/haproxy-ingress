@@ -23,7 +23,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
+	"github.com/n42-gateway/n42-gateway/pkg/types"
 )
 
 // NewSigner ...

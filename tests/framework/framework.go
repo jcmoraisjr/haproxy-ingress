@@ -49,12 +49,12 @@ import (
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
-	ctrlconfig "github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/launch"
-	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/socket"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
-	"github.com/jcmoraisjr/haproxy-ingress/tests/framework/options"
+	ctrlconfig "github.com/n42-gateway/n42-gateway/pkg/controller/config"
+	"github.com/n42-gateway/n42-gateway/pkg/controller/launch"
+	ingtypes "github.com/n42-gateway/n42-gateway/pkg/converters/ingress/types"
+	"github.com/n42-gateway/n42-gateway/pkg/haproxy/socket"
+	"github.com/n42-gateway/n42-gateway/pkg/utils"
+	"github.com/n42-gateway/n42-gateway/tests/framework/options"
 )
 
 const (

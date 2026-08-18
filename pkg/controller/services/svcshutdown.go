@@ -19,7 +19,7 @@ package services
 import (
 	"context"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
+	"github.com/n42-gateway/n42-gateway/pkg/haproxy"
 )
 
 type svcShutdown struct {

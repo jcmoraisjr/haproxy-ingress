@@ -24,10 +24,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/socket"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/template"
-	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
+	"github.com/n42-gateway/n42-gateway/pkg/haproxy/socket"
+	"github.com/n42-gateway/n42-gateway/pkg/haproxy/template"
+	hatypes "github.com/n42-gateway/n42-gateway/pkg/haproxy/types"
+	"github.com/n42-gateway/n42-gateway/pkg/types"
 )
 
 type dynUpdater struct {

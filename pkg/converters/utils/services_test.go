@@ -24,7 +24,7 @@ import (
 	api "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/helper_test"
+	"github.com/n42-gateway/n42-gateway/pkg/converters/helper_test"
 )
 
 func TestCreateEndpointsExternalName(t *testing.T) {

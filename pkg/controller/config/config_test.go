@@ -86,7 +86,7 @@ func TestParseIP(t *testing.T) {
 			expClass: ipNone,
 		},
 		"hostname-valid": {
-			addr:     "haproxy-ingress.github.io",
+			addr:     "n42-gateway.github.io",
 			expClass: ipNone,
 		},
 	}

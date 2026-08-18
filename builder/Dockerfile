@@ -29,7 +29,7 @@ COPY . .
 RUN GIT_TAG=${GIT_TAG:-latest}\
  && GIT_COMMIT=git-$(git rev-parse --short HEAD)\
  && GIT_REPO=$(git config --get remote.origin.url)\
- && VERSION_PKG=github.com/jcmoraisjr/haproxy-ingress/pkg/version\
+ && VERSION_PKG=github.com/n42-gateway/n42-gateway/pkg/version\
  && echo "-X ${VERSION_PKG}.RELEASE=${GIT_TAG} -X ${VERSION_PKG}.COMMIT=${GIT_COMMIT} -X ${VERSION_PKG}.REPO=${GIT_REPO}" > /x-args
 
 FROM --platform=$BUILDPLATFORM builder-common AS builder

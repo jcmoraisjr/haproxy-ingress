@@ -25,7 +25,7 @@ import (
 	"testing"
 	"time"
 
-	types_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/types/helper_test"
+	types_helper "github.com/n42-gateway/n42-gateway/pkg/types/helper_test"
 )
 
 // Update the following keys to run the test. The challenge will be saved in /tmp/out,

@@ -27,12 +27,12 @@ import (
 	"strconv"
 	"strings"
 
-	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
-	ingutils "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/utils"
-	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
-	convutils "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/utils"
-	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
+	ingtypes "github.com/n42-gateway/n42-gateway/pkg/converters/ingress/types"
+	ingutils "github.com/n42-gateway/n42-gateway/pkg/converters/ingress/utils"
+	convtypes "github.com/n42-gateway/n42-gateway/pkg/converters/types"
+	convutils "github.com/n42-gateway/n42-gateway/pkg/converters/utils"
+	hatypes "github.com/n42-gateway/n42-gateway/pkg/haproxy/types"
+	"github.com/n42-gateway/n42-gateway/pkg/utils"
 )
 
 func buildBackendVars(global *hatypes.Global, backend *hatypes.Backend, globalVars map[string]string) map[string]string {

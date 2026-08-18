@@ -26,10 +26,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
-	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
-	"github.com/jcmoraisjr/haproxy-ingress/tests/framework"
-	"github.com/jcmoraisjr/haproxy-ingress/tests/framework/options"
+	"github.com/n42-gateway/n42-gateway/pkg/controller/config"
+	ingtypes "github.com/n42-gateway/n42-gateway/pkg/converters/ingress/types"
+	"github.com/n42-gateway/n42-gateway/tests/framework"
+	"github.com/n42-gateway/n42-gateway/tests/framework/options"
 )
 
 func TestIntegrationIngress(t *testing.T) {

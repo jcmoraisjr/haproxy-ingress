@@ -32,8 +32,8 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/tracker"
-	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
+	"github.com/n42-gateway/n42-gateway/pkg/converters/tracker"
+	convtypes "github.com/n42-gateway/n42-gateway/pkg/converters/types"
 )
 
 // SecretContent ...

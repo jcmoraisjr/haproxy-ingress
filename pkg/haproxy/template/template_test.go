@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/types/helper_test"
+	"github.com/n42-gateway/n42-gateway/pkg/types/helper_test"
 )
 
 type testConfig struct {

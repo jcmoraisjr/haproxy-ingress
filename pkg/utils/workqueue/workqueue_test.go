@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils/workqueue"
+	"github.com/n42-gateway/n42-gateway/pkg/utils/workqueue"
 )
 
 func TestQueue(t *testing.T) {

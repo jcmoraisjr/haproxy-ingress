@@ -30,15 +30,15 @@ import (
 	networking "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/annotations"
-	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
-	ingutils "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/utils"
-	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
-	convutils "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/utils"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
-	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
+	"github.com/n42-gateway/n42-gateway/pkg/converters/ingress/annotations"
+	ingtypes "github.com/n42-gateway/n42-gateway/pkg/converters/ingress/types"
+	ingutils "github.com/n42-gateway/n42-gateway/pkg/converters/ingress/utils"
+	convtypes "github.com/n42-gateway/n42-gateway/pkg/converters/types"
+	convutils "github.com/n42-gateway/n42-gateway/pkg/converters/utils"
+	"github.com/n42-gateway/n42-gateway/pkg/haproxy"
+	hatypes "github.com/n42-gateway/n42-gateway/pkg/haproxy/types"
+	"github.com/n42-gateway/n42-gateway/pkg/types"
+	"github.com/n42-gateway/n42-gateway/pkg/utils"
 )
 
 // Config ...
@@ -506,7 +506,7 @@ func (c *converter) syncIngressHTTP(source *annotations.Source, ing *networking.
 			// TODO move to updater.buildBackendAuthExternal()
 			// TODO addBackend() might change the portName on named port configurations to enforce consistency,
 			// however updater's FindBackend() won't do it, leading to a silently broken configuration.
-			// See https://github.com/jcmoraisjr/haproxy-ingress/issues/981
+			// See https://github.com/n42-gateway/n42-gateway/issues/981
 			// Moving this logic to updater will fix this behavior, in the mean time we'll add a few more
 			// tips in the doc.
 			if url := annBack[ingtypes.BackAuthURL]; url != "" {

@@ -25,8 +25,8 @@ import (
 
 	"github.com/jinzhu/copier"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/template"
-	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
+	"github.com/n42-gateway/n42-gateway/pkg/haproxy/template"
+	hatypes "github.com/n42-gateway/n42-gateway/pkg/haproxy/types"
 )
 
 // Config ...

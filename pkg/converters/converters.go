@@ -17,12 +17,12 @@ limitations under the License.
 package converters
 
 import (
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/gateway"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/tcpservices"
-	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
+	"github.com/n42-gateway/n42-gateway/pkg/converters/gateway"
+	"github.com/n42-gateway/n42-gateway/pkg/converters/ingress"
+	"github.com/n42-gateway/n42-gateway/pkg/converters/tcpservices"
+	convtypes "github.com/n42-gateway/n42-gateway/pkg/converters/types"
+	"github.com/n42-gateway/n42-gateway/pkg/haproxy"
+	"github.com/n42-gateway/n42-gateway/pkg/utils"
 )
 
 // Config ...

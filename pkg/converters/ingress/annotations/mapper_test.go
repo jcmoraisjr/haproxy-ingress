@@ -20,7 +20,7 @@ import (
 	"reflect"
 	"testing"
 
-	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
+	hatypes "github.com/n42-gateway/n42-gateway/pkg/haproxy/types"
 )
 
 type ann struct {

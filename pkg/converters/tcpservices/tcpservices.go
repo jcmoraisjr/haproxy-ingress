@@ -22,10 +22,10 @@ import (
 	"strconv"
 	"strings"
 
-	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
-	convutils "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/utils"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
+	convtypes "github.com/n42-gateway/n42-gateway/pkg/converters/types"
+	convutils "github.com/n42-gateway/n42-gateway/pkg/converters/utils"
+	"github.com/n42-gateway/n42-gateway/pkg/haproxy"
+	"github.com/n42-gateway/n42-gateway/pkg/types"
 )
 
 // TCPServicesConverter ...

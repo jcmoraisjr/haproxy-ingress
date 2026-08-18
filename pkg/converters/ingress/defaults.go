@@ -17,7 +17,7 @@ limitations under the License.
 package ingress
 
 import (
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
+	"github.com/n42-gateway/n42-gateway/pkg/converters/ingress/types"
 )
 
 const (

@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/jcmoraisjr/haproxy-ingress/tests/framework/options"
+	"github.com/n42-gateway/n42-gateway/tests/framework/options"
 )
 
 const (

@@ -23,9 +23,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/reconciler"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/services"
+	"github.com/n42-gateway/n42-gateway/pkg/controller/config"
+	"github.com/n42-gateway/n42-gateway/pkg/controller/reconciler"
+	"github.com/n42-gateway/n42-gateway/pkg/controller/services"
 )
 
 // Run ...

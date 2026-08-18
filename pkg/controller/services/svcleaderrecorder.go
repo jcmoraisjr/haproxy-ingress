@@ -29,7 +29,7 @@ import (
 	"k8s.io/client-go/tools/events"
 	"k8s.io/client-go/tools/record"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
+	"github.com/n42-gateway/n42-gateway/pkg/controller/config"
 )
 
 func initRecorderProvider(ctx context.Context, cfg *config.Config) (*recorderProvider, error) {

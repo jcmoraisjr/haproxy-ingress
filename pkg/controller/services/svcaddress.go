@@ -33,9 +33,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
-	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
+	"github.com/n42-gateway/n42-gateway/pkg/controller/config"
+	convtypes "github.com/n42-gateway/n42-gateway/pkg/converters/types"
+	"github.com/n42-gateway/n42-gateway/pkg/utils"
 )
 
 func initSvcAddress(ctx context.Context, config *config.Config, client client.Client, cache *c) *svcAddress {

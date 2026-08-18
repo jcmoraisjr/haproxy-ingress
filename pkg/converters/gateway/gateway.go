@@ -39,11 +39,11 @@ import (
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
-	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
-	convutils "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/utils"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
-	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
-	pkgtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/types"
+	convtypes "github.com/n42-gateway/n42-gateway/pkg/converters/types"
+	convutils "github.com/n42-gateway/n42-gateway/pkg/converters/utils"
+	"github.com/n42-gateway/n42-gateway/pkg/haproxy"
+	hatypes "github.com/n42-gateway/n42-gateway/pkg/haproxy/types"
+	pkgtypes "github.com/n42-gateway/n42-gateway/pkg/types"
 )
 
 // Config ...

@@ -24,10 +24,10 @@ import (
 	"golang.org/x/sync/errgroup"
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils/workqueue"
+	"github.com/n42-gateway/n42-gateway/pkg/acme"
+	"github.com/n42-gateway/n42-gateway/pkg/controller/config"
+	"github.com/n42-gateway/n42-gateway/pkg/types"
+	"github.com/n42-gateway/n42-gateway/pkg/utils/workqueue"
 )
 
 type svcAcmeCheckFnc func() (count int, err error)
