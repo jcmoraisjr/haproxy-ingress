@@ -274,15 +274,6 @@ func (d *dynUpdater) dynamicallySyncSlots(pair *backendPair) bool {
 	// execSetNameServer falls back to a reload.
 	wantRename := curBack.ServerRename
 
-	// pendingRename tracks live-slot reuses where the slot was already
-	// updated to the new IP by checkEndpointPair; the rename follows after.
-	type pendingRename struct {
-		ep          *hatypes.Endpoint
-		oldName     string
-		desiredName string
-	}
-	var renames []pendingRename
-
 	// reuse the backend/server which has the same target endpoint, if found,
 	// this will save some socket calls and will not mess endpoint metrics
 	var added []*hatypes.Endpoint
@@ -302,17 +293,9 @@ func (d *dynUpdater) dynamicallySyncSlots(pair *backendPair) bool {
 	for _, target := range targets {
 		pair := endpoints[target]
 		if pair.cur == nil && len(added) > 0 {
-			desiredName := added[0].Name
 			pair.cur = added[0]
 			pair.cur.Name = pair.old.Name
 			added = added[1:]
-			if wantRename && desiredName != pair.old.Name {
-				renames = append(renames, pendingRename{
-					ep:          pair.cur,
-					oldName:     pair.old.Name,
-					desiredName: desiredName,
-				})
-			}
 		}
 		if pair.cur == nil {
 			if !d.execDisableEndpoint(curBack.ID, pair.old) || pair.old.Label != "" {
@@ -349,47 +332,6 @@ func (d *dynUpdater) dynamicallySyncSlots(pair *backendPair) bool {
 	// copy remaining empty slots from oldBack to curBack, so it can be used in a future update
 	for i := len(added); i < len(empty); i++ {
 		curBack.AddEmptyEndpoint().Name = empty[i].Name
-	}
-
-	// Apply pending renames: live slots that were updated to the new IP by
-	// checkEndpointPair and now need their server name updated too.
-	// addr/weight are already current; we only need disable→rename→re-enable.
-	for _, r := range renames {
-		if !r.ep.Enabled || r.ep.Label != "" {
-			// endpoint was not enabled (e.g. cookie mismatch) or is a
-			// blue/green use-server entry; just update the in-memory name
-			// so it will be correct after reload
-			r.ep.Name = r.desiredName
-			continue
-		}
-		if !d.execDisableEndpoint(curBack.ID, r.ep) {
-			updated = false
-			continue
-		}
-		if !d.execSetNameServer(curBack.ID, r.oldName, r.desiredName) {
-			// rename failed; re-enable with old name and let a reload fix it
-			d.execEnableServer(curBack.ID, r.ep)
-			updated = false
-			continue
-		}
-		r.ep.Name = r.desiredName
-		d.logger.InfoV(2, "renamed server on backend '%s' from '%s' to '%s'", curBack.ID, r.oldName, r.desiredName)
-
-		// Reset counters while the server is still in maintenance mode so
-		// per-pod counter attribution starts cleanly for the new occupant.
-		// NOTE: 'clear counters server' is not released in HAProxy yet, so
-		// this currently returns false and logs a Warn on every rename; the
-		// call is left in so it activates automatically once the command
-		// ships. Failure is non-fatal by design: the rename has already
-		// committed; dirty counters are preferable to failing the update
-		// entirely (the helper logs the warning internally).
-		d.execClearCountersServer(curBack.ID, r.desiredName)
-
-		if !d.execEnableServer(curBack.ID, r.ep) || r.ep.Label != "" {
-			updated = false
-			continue
-		}
-		d.logger.InfoV(2, "updated endpoint '%s' weight '%d' on backend/server '%s/%s'", r.ep.Target, r.ep.Weight, curBack.ID, r.ep.Name)
 	}
 
 	return updated
@@ -752,6 +694,14 @@ func (d *dynUpdater) execRenameEndpoint(backname, oldName string, ep *hatypes.En
 	}
 	ep.Name = newName
 	d.logger.InfoV(2, "renamed server on backend '%s' from '%s' to '%s'", backname, oldName, newName)
+
+	// Reset counters while the server is still in maintenance mode so
+	// per-pod counter attribution starts cleanly for the new occupant.
+	// Failure is non-fatal by design (the helper logs the warning
+	// internally): the rename has already committed and dirty counters are
+	// preferable to failing the update entirely.
+	d.execClearCountersServer(backname, newName)
+
 	if !d.execEnableEndpoint(backname, nil, ep) || ep.Label != "" {
 		return false
 	}
