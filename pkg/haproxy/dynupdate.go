@@ -270,8 +270,8 @@ func (d *dynUpdater) dynamicallySyncSlots(pair *backendPair) bool {
 
 	// TODO: gate wantRename on the HAProxy version once version tracking is
 	// added to the model; 'set server <b>/<s> name' first shipped in HAProxy
-	// 3.5-dev2. On older HAProxy the CLI rejects the command and
-	// execSetNameServer falls back to a reload.
+	// 3.5-dev4 (dev snapshot; not yet in a stable release). On older HAProxy
+	// the CLI rejects the command and execSetNameServer falls back to a reload.
 	wantRename := curBack.ServerRename
 
 	// reuse the backend/server which has the same target endpoint, if found,
@@ -656,8 +656,9 @@ func (d *dynUpdater) execSetNameServer(backname, oldName, newName string) bool {
 // command already requires.
 //
 // Returns true on success, false on any failure (unrecognized response,
-// socket error, or an HAProxy without the command). The command is not yet
-// released in HAProxy, so this presently returns false and logs a warning;
+// socket error, or an HAProxy without the command). The command first shipped
+// in HAProxy 3.5-dev4 (dev snapshot; not yet in a stable release), so on the
+// stable versions most users run this returns false and logs a warning;
 // callers treat that as a soft failure: the rename has already succeeded; the
 // only consequence is that counters remain accumulated from the previous slot
 // occupant until the next reload.
