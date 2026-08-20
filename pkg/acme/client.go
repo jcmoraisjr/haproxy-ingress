@@ -38,7 +38,7 @@ const (
 )
 
 var (
-	acmeUserAgent = "haproxy-ingress/" + version.RELEASE
+	acmeUserAgent = "n42-gateway/" + version.RELEASE
 )
 
 // NewClient ...

@@ -77,7 +77,7 @@ linux-build:
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build \
 	  -v -installsuffix cgo \
 	  -ldflags "-s -w $(CONTROLLER_FLAGS)" \
-	  -o rootfs/haproxy-ingress-controller pkg/main.go
+	  -o rootfs/n42-gateway-controller pkg/main.go
 
 .PHONY: image
 image: linux-build
@@ -85,5 +85,4 @@ image: linux-build
 
 .PHONY: docker-build
 docker-build:
-	@rm -f rootfs/haproxy-ingress-controller
-	docker build -t $(CONTROLLER_TAG) . -f builder/Dockerfile
+	docker-buildx build -t $(CONTROLLER_TAG) . -f builder/Dockerfile

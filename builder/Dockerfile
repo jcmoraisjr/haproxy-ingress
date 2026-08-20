@@ -36,8 +36,8 @@ FROM --platform=$BUILDPLATFORM builder-common AS builder
 ARG TARGETPLATFORM
 RUN CGO_ENABLED=0 xx-go build\
     -ldflags "-s -w $(cat /x-args)"\
-    -o haproxy-ingress pkg/main.go\
- && xx-verify haproxy-ingress
+    -o n42-gateway pkg/main.go\
+ && xx-verify n42-gateway
 
 FROM haproxy:3.0.23-alpine
 
@@ -46,7 +46,7 @@ USER root
 RUN apk upgrade --no-cache && apk --no-cache add libcap-utils socat openssl lua5.3 lua-json4 dumb-init
 
 COPY rootfs/ /
-COPY --from=builder /src/haproxy-ingress /haproxy-ingress-controller
+COPY --from=builder /src/n42-gateway /n42-gateway-controller
 
 RUN mkdir -p /var/empty /etc/haproxy /var/lib/haproxy /var/run/haproxy\
  && chown -R haproxy:haproxy /etc/haproxy /var/lib/haproxy /var/run/haproxy\
