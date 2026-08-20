@@ -100,7 +100,7 @@ func (s *Services) setup(ctx context.Context) error {
 		reloadQueue = workqueue.New(s.reloadHAProxy, workqueue.ReloadHAProxyRateLimiter(cfg.ReloadInterval))
 	}
 	tracker := tracker.NewTracker()
-	metrics := createMetrics(cfg.BucketsResponseTime)
+	metrics := createMetrics(cfg.MetricsNamespace, cfg.BucketsResponseTime)
 	svcleader, err := initSvcLeader(ctx, cfg)
 	if err != nil {
 		return err

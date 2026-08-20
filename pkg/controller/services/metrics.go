@@ -48,8 +48,7 @@ func (m *metrics) register(reg prometheus.Registerer) {
 	)
 }
 
-func createMetrics(bucketsResponseTime []float64) *metrics {
-	namespace := "haproxyingress"
+func createMetrics(namespace string, bucketsResponseTime []float64) *metrics {
 	metrics := &metrics{
 		responseTime: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
@@ -64,7 +63,7 @@ func createMetrics(bucketsResponseTime []float64) *metrics {
 			prometheus.CounterOpts{
 				Namespace: namespace,
 				Name:      "controller_processing_time_seconds_sum",
-				Help:      "Cumulative time in seconds spent on haproxy-ingress tasks",
+				Help:      "Cumulative time in seconds spent on N42 Gateway tasks",
 			},
 			[]string{"task"},
 		),
@@ -72,7 +71,7 @@ func createMetrics(bucketsResponseTime []float64) *metrics {
 			prometheus.CounterOpts{
 				Namespace: namespace,
 				Name:      "controller_processing_count",
-				Help:      "Cumulative number of haproxy-ingress tasks executed",
+				Help:      "Cumulative number of N42 Gateway tasks executed",
 			},
 			[]string{"task"},
 		),

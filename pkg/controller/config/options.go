@@ -23,6 +23,7 @@ func NewOptions() *Options {
 		AcmeSecretKeyName:       "acme-private-key",
 		AcmeTokenConfigMapName:  "acme-validation-tokens",
 		BucketsResponseTime:     []float64{.0005, .001, .002, .005, .01},
+		MetricsNamespace:        "n42gateway",
 		IPMode:                  "auto",
 		AnnPrefix:               "n42-gateway.github.io,haproxy-ingress.github.io,ingress.kubernetes.io",
 		RateLimitUpdate:         0.5,
@@ -76,6 +77,7 @@ type Options struct {
 	AcmeTokenConfigMapName   string
 	AcmeTrackTLSAnn          bool
 	BucketsResponseTime      []float64
+	MetricsNamespace         string
 	PublishService           string
 	PublishAddress           string
 	IPMode                   string
@@ -194,7 +196,7 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 		"Define if the resulting configuration files should be validated when a dynamic "+
 		"update was applied. Default value is false, which means the validation will "+
 		"only happen when HAProxy needs to be reloaded. If validation fails, HAProxy "+
-		"Ingress will log the error and set the metric 'haproxyingress_update_success' "+
+		"Ingress will log the error and set the metric 'n42gateway_update_success' "+
 		"as failed (zero)",
 	)
 
@@ -293,6 +295,9 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 		"Configures the buckets of the histogram used to compute the response time of "+
 		"the haproxy's admin socket. The response time unit is in seconds.",
 	)
+
+	fs.StringVar(&o.MetricsNamespace, "metrics-namespace", o.MetricsNamespace, ""+
+		"")
 
 	fs.StringVar(&o.PublishService, "publish-service", o.PublishService, ""+
 		"Service fronting the ingress controllers. Takes the form namespace/name. The "+

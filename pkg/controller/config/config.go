@@ -600,6 +600,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		MasterSocket:             opt.MasterSocket,
 		MasterWorker:             masterWorkerCfg,
 		MaxOldConfigFiles:        opt.MaxOldConfigFiles,
+		MetricsNamespace:         opt.MetricsNamespace,
 		Profiling:                opt.Profiling,
 		PublishAddressHostnames:  publishAddressHostnames,
 		PublishAddressIPs:        publishAddressIPs,
@@ -924,6 +925,7 @@ type Config struct {
 	MasterSocket             string
 	MasterWorker             bool
 	MaxOldConfigFiles        int
+	MetricsNamespace         string
 	Profiling                bool
 	PublishAddressHostnames  []string
 	PublishAddressIPs        []string

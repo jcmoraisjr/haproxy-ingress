@@ -177,7 +177,7 @@ services.
 
 * `--buckets-response-time`
 
-Configures the buckets of the histogram `haproxyingress_haproxy_response_time_seconds`, used to compute the response time of the haproxy's admin socket. The response time unit is in seconds. The default value is `.0005,.001,.002,.005,.01` (`500µs`, `1ms`, `2ms`, `5ms`, `10ms`) if not configured.
+Configures the buckets of the histogram `n42gateway_haproxy_response_time_seconds`, used to compute the response time of the haproxy's admin socket. The response time unit is in seconds. The default value is `.0005,.001,.002,.005,.01` (`500µs`, `1ms`, `2ms`, `5ms`, `10ms`) if not configured.
 
 ---
 
@@ -831,7 +831,7 @@ applied. Default value is `false`, which means the validation will only happen w
 be reloaded.
 
 If validation fails, N42 Gateway will log the error and set the metric
-`haproxyingress_update_success` to zero, indicating failure.
+`n42gateway_update_success` to zero, indicating failure.
 
 ---
 

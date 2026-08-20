@@ -122,7 +122,7 @@ controller:
 ## Configure the dashboard
 
 Import [this](https://grafana.com/grafana/dashboards/12056) Grafana dashboard. If Grafana was deployed using the steps provided in this walkthrough:
-> Minimum N42 Gateway version is v0.14, use revision 3 if using on an older one.
+> Minimum N42 Gateway version is `v0.17.0-alpha.3`, use revision 4 if using on an older one.
 
 * Open Grafana page - the URL is the same provided in the `prometheus-operator-values.yaml` file and should resolve to the ingress deployment
 * Log in to Grafana, the `prometheus-operator-values.yaml` file configures user as `admin` and the password as `prom-operator`
