@@ -34,7 +34,7 @@ The following command-line options are supported:
 | [`--disable-external-name`](#disable-external-name)     | [true\|false]              | `false`                 | v0.10 |
 | [`--disable-ingress-class-api`](#ingress-class)         | [true\|false]              | `false`                 | v0.16 |
 | [`--disable-pod-list`](#disable-pod-list)               | [true\|false]              | `false`                 | v0.11 |
-| [`--election-id`](#election-id)                         | identifier                 | `ingress-controller-leader` |   |
+| [`--election-id`](#election-id)                         | identifier                 | `class-%s.n42-gateway.github.io` |   |
 | [`--enable-endpointslices-api`](#enable-endpointslices-api) | [true\|false]          | `true`                  | v0.14 |
 | [`--force-namespace-isolation`](#force-namespace-isolation) | [true\|false]          | `false`                 |       |
 | [`--full-controller-name`](#ingress-class)              | fully qualified name       |                         | v0.17 |
@@ -290,7 +290,7 @@ Election ID configuration has no effect if none of Address status update, Embedd
 
 Since v0.15 a `%s` placeholder is used to define where the IngressClass value should be added to the election ID. Up to v0.14 the IngressClass was concatenated in the end of the provided value to compose the real election ID value. Ingress class is added to the election ID name to avoid conflict when two or more N42 Gateway controllers are running in the same cluster.
 
-Election ID defaults to `class-%s.haproxy-ingress.github.io` if not configured, which is rendered to `class-haproxy.haproxy-ingress.github.io` if the IngressClass is not changed from the default value.
+Election ID defaults to `class-%s.n42-gateway.github.io` if not configured, which is rendered to `class-haproxy.n42-gateway.github.io` if the IngressClass is not changed from the default value.
 
 ---
 

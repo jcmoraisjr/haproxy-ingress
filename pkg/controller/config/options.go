@@ -38,7 +38,7 @@ func NewOptions() *Options {
 		Profiling:               true,
 		VerifyHostname:          true,
 		UpdateStatus:            true,
-		ElectionID:              "class-%s.haproxy-ingress.github.io",
+		ElectionID:              "class-%s.n42-gateway.github.io",
 		ShutdownTimeout:         25 * time.Second,
 		HAProxyGracePeriod:      20 * time.Second,
 		UpdateStatusOnShutdown:  true,
