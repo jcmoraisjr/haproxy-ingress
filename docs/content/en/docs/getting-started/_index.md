@@ -81,7 +81,7 @@ N42 Gateway uses [Helm](https://helm.sh) chart to install and configure the cont
 
     > Note that the command `upgrade` above, along with the `--install` command-line option, starts a new N42 Gateway deployment if it is missing, or starts a rolling update if N42 Gateway is already installed. `template` can be used instead to generate the manifests without installing them - add either a redirect `... >haproxy-ingress-install.yaml` to save the output, or `--output-dir output/` command line option to save one file per manifest.
 
-    > [!NB] See the [migration guide](/v0.17/docs/migration-guide/) for upcoming changes to N42 Gateway.
+    > [!NB] See the [migration guide]({{% relref "migration-guide" %}}) for alternatives if upgrading from HAProxy Ingress.
 
 The controller should be running in a few seconds. There are four important customizations made in the example above:
 
