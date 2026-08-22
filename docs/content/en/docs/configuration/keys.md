@@ -71,7 +71,7 @@ The following sections describe in a few more details about configuration strate
 
 ConfigMap key/value options are read in the following conditions:
 
-* Global config, using `--configmap` command-line option. The installation process configures a Global config ConfigMap named `haproxy-ingress` in the controller namespace. This is the only way to configure keys from the `Global` scope. See about scopes [later](#scope) in this page. Note, `--configmap` needs to be in the following format: `<namespace>/<configmap-name>`.
+* Global config, using `--configmap` command-line option. The installation process configures a Global config ConfigMap named `n42-gateway` in the controller namespace. This is the only way to configure keys from the `Global` scope. See about scopes [later](#scope) in this page. Note, `--configmap` needs to be in the following format: `<namespace>/<configmap-name>`.
 * IngressClass config, using its `parameters` field linked to a ConfigMap declared in the same namespace of the controller. See about IngressClass [later](#ingressclass) in this same section.
 
 A configuration key is used verbatim as the ConfigMap key name, without any prefix.
@@ -86,7 +86,7 @@ data:
   ssl-redirect: "true"
 kind: ConfigMap
 metadata:
-  name: haproxy-ingress
+  name: n42-gateway
   namespace: ingress-controller
 ```
 
@@ -1796,7 +1796,7 @@ data:
   ...
 kind: ConfigMap
 metadata:
-  name: haproxy-ingress
+  name: n42-gateway
   namespace: ingress-controller
 ```
 
@@ -1821,7 +1821,7 @@ data:
   ...
 kind: ConfigMap
 metadata:
-  name: haproxy-ingress
+  name: n42-gateway
   namespace: ingress-controller
 ```
 

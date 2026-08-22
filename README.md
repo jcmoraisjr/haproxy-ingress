@@ -76,10 +76,10 @@ make docker-build
 Deploy local image using Helm:
 
 ```
-helm repo add haproxy-ingress https://n42-gateway.github.io/charts
-helm install haproxy-ingress haproxy-ingress/haproxy-ingress\
+helm repo add n42 https://n42-gateway.github.io/charts
+helm install n42 n42/n42-gateway\
   --create-namespace --namespace=ingress-controller\
-  --set controller.image.repository=localhost/haproxy-ingress\
+  --set controller.image.repository=localhost/n42-gateway\
   --set controller.image.tag=latest\
   --set controller.image.pullPolicy=Never
 ```

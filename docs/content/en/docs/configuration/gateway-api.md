@@ -54,7 +54,7 @@ Follow the steps below to expose the echoserver service from the [Getting Starte
 * [Install]({{% relref "/docs/getting-started" %}}) or restart N42 Gateway so it can find the just installed APIs:
 
     ```
-    $ kubectl --namespace ingress-controller delete pod -lapp.kubernetes.io/name=haproxy-ingress
+    $ kubectl --namespace ingress-controller delete pod -lapp.kubernetes.io/name=n42-gateway
     ```
 
 * Create a GatewayClass with the following content:

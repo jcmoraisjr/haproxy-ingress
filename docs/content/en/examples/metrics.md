@@ -92,7 +92,7 @@ There are two important configurations in the snippet above:
 
 Now install or upgrade the chart:
 ```
-helm upgrade haproxy-ingress haproxy-ingress/haproxy-ingress\
+helm upgrade n42 n42/n42-gateway\
   --install\
   --create-namespace --namespace ingress-controller\
   -f n42-gateway-values.yaml

@@ -15,8 +15,7 @@ web application firewall on N42 Gateway controller.
 
 This document has the following prerequisites:
 
-* A Kubernetes cluster with a running N42 Gateway controller. See the [five minutes deployment](https://github.com/n42-gateway/n42-gateway/tree/master/examples/setup-cluster.md#five-minutes-deployment) or the [deployment example](https://github.com/n42-gateway/n42-gateway/tree/master/examples/deployment)
-* `ingress-controller` namespace, the default of the five minutes deployment
+* A Kubernetes cluster with a running N42 Gateway controller. See the [Getting Started guide]({{% relref "/docs/getting-started#installation" %}})
 
 ## Deploying agent
 
@@ -63,7 +62,7 @@ modsecurity-spoa         ClusterIP  172.20.216.246   <none>       12345/TCP   7m
 
 Add the ConfigMap key `modsecurity-endpoints` with a comma-separated list of `IP:port`
 of the ModSecurity agent server(s). The default port number of the agent is `12345`.
-A `kubectl -n ingress-controller edit configmap haproxy-ingress` should work.
+A `kubectl -n ingress-controller edit configmap n42-gateway` should work.
 
 Example of a ConfigMap content if the ModSecurity service has a ClusterIP of `172.20.216.246`:
 
@@ -189,7 +188,7 @@ modsecurity-spoa-6596c6b444-mkndw   2/2     Running   0          14m
 
 Since the maintainers of ModSecurity are dropping support in 2024, [OWASP has created a replacement called Coraza](https://coreruleset.org/20211222/talking-about-modsecurity-and-the-new-coraza-waf/) which is a drop-in replacement for ModSecurity.
 
-In order to use Coraza, the process is essentially the same as described in the above sections, with a few exceptions. First, in the haproxy-ingress ConfigMap, add the following two additional keys:
+In order to use Coraza, the process is essentially the same as described in the above sections, with a few exceptions. First, in the `n42-gateway` ConfigMap, add the following two additional keys:
 
 ```yaml
   modsecurity-use-coraza: true

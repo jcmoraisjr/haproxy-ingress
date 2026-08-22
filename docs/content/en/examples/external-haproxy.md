@@ -22,7 +22,7 @@ installed, and if so, the installation process should use the
 ## Configure the controller
 
 The easiest and recommended way to configure an external haproxy is using the Helm
-chart with a customized values file. Create the `haproxy-ingress-values.yaml` file with the
+chart with a customized values file. Create the `n42-gateway-values.yaml` file with the
 following content:
 
 ```yaml
@@ -121,22 +121,18 @@ to `:80` and `:443` without the need to run as root. Give it a try by removing t
 
 ## Install the controller
 
-Add the HAProxy Ingress Helm repository if using HAProxy Ingress' chart for the first time:
-
-> [!INFO] Note
->
-> N42 Gateway v0.16 uses the HAProxy Ingress branding in Helm configuration
+Add the N42 Gateway Helm repository if using N42 Gateway' chart for the first time:
 
 ```
-$ helm repo add haproxy-ingress https://haproxy-ingress.github.io/charts
+$ helm repo add n42 https://n42-gateway.github.io/charts
 ```
 
-Install or upgrade N42 Gateway using the `haproxy-ingress-values.yaml` parameters:
+Install or upgrade N42 Gateway using the `n42-gateway-values.yaml` parameters:
 
 ```
-$ helm upgrade haproxy-ingress haproxy-ingress/haproxy-ingress\
+$ helm upgrade n42 n42/n42-gateway\
   --install --create-namespace --namespace=ingress-controller\
-  -f haproxy-ingress-values.yaml
+  -f n42-gateway-values.yaml
 ```
 
 Check if the controller successfully starts or restarts:
@@ -147,20 +143,20 @@ $ kubectl --namespace ingress-controller get pod -w
 
 ## Test
 
-Open two distinct terminals to follow `haproxy-ingress` and `haproxy` logs:
+Open two distinct terminals to follow `n42-gateway` and `haproxy` logs:
 
 ```
 $ kubectl --namespace ingress-controller get pod
-NAME                               READY   STATUS    RESTARTS   AGE
-haproxy-ingress-6f8848d6fb-gxmrk   2/2     Running   0          13s
+NAME                           READY   STATUS    RESTARTS   AGE
+n42-gateway-6f8848d6fb-gxmrk   2/2     Running   0          13s
 
-$ kubectl --namespace ingress-controller logs -f haproxy-ingress-6f8848d6fb-gxmrk -c haproxy-ingress
+$ kubectl --namespace ingress-controller logs -f n42-gateway-6f8848d6fb-gxmrk -c n42-gateway
 ```
 
 and
 
 ```
-$ kubectl --namespace ingress-controller logs -f haproxy-ingress-6f8848d6fb-gxmrk -c haproxy
+$ kubectl --namespace ingress-controller logs -f n42-gateway-6f8848d6fb-gxmrk -c haproxy
 ```
 
 Do some `curl` to any exposed application, or just use the controller or service loadbalancer
@@ -172,7 +168,7 @@ $ curl 192.168.1.11
 
 N42 Gateway and the external haproxy should be logging their own events:
 
-`haproxy-ingress` container:
+`n42-gateway` container:
 
 ```
 ...
@@ -226,9 +222,9 @@ works well.
 
 The following directories must be shared:
 
-* `/etc/haproxy`: configuration and map files - `init` and `haproxy-ingress` need write access, `haproxy` need read access.
-* `/var/lib/haproxy`: mostly ssl related files - `haproxy-ingress` need write access, `haproxy` need read access.
-* `/var/run/haproxy`: unix sockets - `haproxy-ingress` and `haproxy` need write access.
+* `/etc/haproxy`: configuration and map files - `init` and `n42-gateway` need write access, `haproxy` need read access.
+* `/var/lib/haproxy`: mostly ssl related files - `n42-gateway` need write access, `haproxy` need read access.
+* `/var/run/haproxy`: unix sockets - `n42-gateway` and `haproxy` need write access.
 
 ### Liveness probe
 
