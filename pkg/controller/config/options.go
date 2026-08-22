@@ -54,6 +54,7 @@ type Options struct {
 	DefaultSvc               string
 	IngressClass             string
 	IngressClassPrecedence   bool
+	ConfigurationClass       string
 	DisableIngressClassAPI   bool
 	ReloadStrategy           string
 	MaxOldConfigFiles        int
@@ -166,6 +167,12 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 
 	fs.StringVar(&o.IngressClass, "ingress-class", o.IngressClass, ""+
 		"Name of the IngressClass to route through this controller.",
+	)
+
+	fs.StringVar(&o.ConfigurationClass, "configuration-class", o.ConfigurationClass, ""+
+		"Name of an additional class to route through this controller. Ingress or "+
+		"Gateway API resources using this class name are added to the final "+
+		"configuration, but their status are not updated.",
 	)
 
 	fs.BoolVar(&o.IngressClassPrecedence, "ingress-class-precedence", o.IngressClassPrecedence, ""+
