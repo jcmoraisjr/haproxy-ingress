@@ -17,6 +17,9 @@ match\('.+'
 # base64 especially pkg/haproxy/socket/socket_test.go (for lack of a block ignore)
 ^[-a-zA-Z=;:/0-9+]{64}$|^[-a-zA-Z=;:/0-9+]+=$
 
+# Auth external hash
+[0-9a-f]{12}
+
 # openssl output (for lack of a block ignore)
 ^verify error:.*
 

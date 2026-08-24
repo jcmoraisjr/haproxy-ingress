@@ -830,7 +830,7 @@ tls:
 func TestGatewayClassStatus(t *testing.T) {
 	c := setup(t)
 	gwcls := c.createGatewayClass("haproxy")
-	_ = c.createConverter().SyncFull()
+	_ = c.createConverter().Sync(true)
 	c.compareStatus("gatewayclass", gwcls, `
 conditions:
 - lastTransitionTime: "-"
@@ -999,7 +999,7 @@ listeners:
 			c := setup(t)
 			_ = c.createGatewayClass("haproxy")
 			gw := test.create(c)
-			_ = c.createConverter().SyncFull()
+			_ = c.createConverter().Sync(true)
 			c.compareStatus("gateway", gw, test.expStatus)
 			c.logger.CompareLogging(test.expLogging)
 		})
@@ -1209,7 +1209,7 @@ func runTestSync(t *testing.T, testCases []testCaseSync) {
 			// ch.Links reflects changes made by the watcher
 			hasChanges := len(c.cache.Changed.Links) > 0
 			conv := c.createConverter()
-			_ = conv.SyncFull()
+			_ = conv.Sync(true)
 
 			if hasChanges {
 				c.hconfig.Commit()

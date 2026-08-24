@@ -198,7 +198,8 @@ func (s *SSL) buildCertFromCrtAndKey(fileName string, crt, key, ca []byte) (*ssl
 }
 
 func (s *SSL) buildCertFromCAAndCRL(caFileName, crlFileName string, ca, crl []byte) (*sslCert, error) {
-	if _, err := s.checkValidCertPEM(ca); err != nil {
+	crt, err := s.checkValidCertPEM(ca)
+	if err != nil {
 		return nil, err
 	}
 	var pemSHA1 [sha1.Size]byte
@@ -222,6 +223,7 @@ func (s *SSL) buildCertFromCAAndCRL(caFileName, crlFileName string, ca, crl []by
 		CRLFileName: crlFileName,
 		PemFileName: caFileName,
 		PemSHA:      hex.EncodeToString(pemSHA1[:]),
+		Certificate: crt,
 	}, nil
 }
 
@@ -254,8 +256,9 @@ func (s *SSL) createFakeCertAndCA() (crtFile, caFile convtypes.CrtFile, err erro
 		Certificate: sslCrt.Certificate,
 	}
 	caFile = convtypes.CrtFile{
-		Filename: sslCA.PemFileName,
-		SHA1Hash: sslCA.PemSHA,
+		Filename:    sslCA.PemFileName,
+		SHA1Hash:    sslCA.PemSHA,
+		Certificate: sslCA.Certificate,
 	}
 	return crtFile, caFile, nil
 }

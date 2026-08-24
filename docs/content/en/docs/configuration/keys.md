@@ -810,9 +810,9 @@ Configures External Authentication options.
 * `auth-url`: Configures the endpoint(s) of the authentication service. All requests made to the target backend server will be validated by the authentication service before continue, which should respond with `2xx` HTTP status code; otherwise, the request is considered as failed. In the case of a failure, the backend server is not used and the client receives the response from the authentication service.
 * `auth-external-placement`: Defines where the external service call should be configured. Options are `backend` and `frontend`. Default value is `backend` and this is the value that has the better performance. Use `frontend` if the external service create HTTP headers used on early stages, e.g. [HTTP header routing constraints](#http-match). Note that placing the external authentication configuration in the frontend comes with a performance penalty, because all the incoming requests will need to evaluate the ACLs of this configuration. Avoid placing too much (dozens) paths in the frontend on high loaded proxies.
 * `auth-method`: Configures the HTTP method used in the request to the external authentication service. Use an asterisk `*` to copy the same method used in the client request. The default value is `GET`.
-* `auth-headers-request`: Configures a comma-separated list of header names that should be copied from the client to the authentication service. All HTTP headers will be copied if not declared.
-* `auth-headers-succeed`: Configures a comma-separated list of header names that should be copied from the authentication service to the backend server if the authentication succeed. All HTTP headers will be copied if not declared.
-* `auth-headers-fail`: Configures a comma-separated list of header names that should be copied from the authentication service to the client if the authentication fail. This option is ignored if `auth-signin` is used. All HTTP headers will be copied if not declared.
+* `auth-headers-request`: Configures a comma-separated list of header names that should be copied from the client to the authentication service. The match is done in a case-insensitive way. All HTTP headers will be copied if not declared.
+* `auth-headers-succeed`: Configures a comma-separated list of header names that should be copied from the authentication service to the backend server if the authentication succeed. The match is done in a case-insensitive way. All HTTP headers will be copied if not declared.
+* `auth-headers-fail`: Configures a comma-separated list of header names that should be copied from the authentication service to the client if the authentication fail. The match is done in a case-insensitive way. This option is ignored if `auth-signin` is used. All HTTP headers will be copied if not declared.
 * `auth-signin`: Optional, configures the endpoint of the sign in server used to redirect failed requests. The content is parsed by haproxy as a [log-format](https://docs.haproxy.org/3.0/configuration.html#8.2.6) string and the result is copied verbatim to the `Location` header of a HTTP 302 response. The default behavior is to use the authentication service response.
 * `auth-proxy`: Optional, changes the name of a frontend proxy and a free TCP port range, used by `auth-request.lua` script to query the external authentication endpoint.
 
@@ -828,6 +828,10 @@ Configures External Authentication options.
 `http` and `https` protocols are straightforward: use them to connect to an IP or hostname without any further configuration. `http` adds the HTTP `Host` header if a hostname is used, and `https` adds also the sni extension. Note that `https` connects in an insecure way and currently cannot be customized. Do NOT use neither `http` nor `https` if haproxy -> authentication service communication has untrusted networks.
 
 `svc` protocol allows to use a Kubernetes service declared in the same namespace of the ingress or the service being annotated. Services on other namespaces can also be used in the form `svc://namespace/servicename:port/path` if global config [`cross-namespace-services`](#cross-namespace) was configured as `allow`. The service can be of any type and a port must always be declared - both in the `auth-url` configuration and in the service resource. Using `svc` protocol allows to configure a secure connection, see [secure](#secure-backend) configuration keys and annotate them in the target service.
+
+{{< alert title="Note" >}}
+`http` or `https` protos should only use domain names with stable IP addresses. They are not recommended for external services that scale in/out, or frequently changes their IP, and consequently updates the DNS records. HAProxy Ingress will only follow changes in the DNS records on full reconciliations or when the configured ingress or service changes, which should cause outages until a new reconciliation happens.
+{{< /alert >}}
 
 Configuration examples:
 
@@ -1002,10 +1006,12 @@ See also:
 | `bind-https`              | `Frontend` |         | v0.8  |
 | ~~`bind-fronting-proxy`~~ | `Frontend` |         | v0.8  |
 
-Configures listening IP and port for HTTP(S) incoming requests. These
-configuration keys have backward compatibility with [Bind IP addr](#bind-ip-addr),
-[Bind port](#bind-port) and [HTTP Passthrough](#http-passthrough) keys.
-The bind configuration keys in this section have precedence if declared.
+Configures listening IP and port for HTTP(S) incoming requests. If empty, the
+configuration provided in [Bind IP addr](#bind-ip-addr),
+[Bind port](#bind-port) and [HTTP Passthrough](#http-passthrough) keys are used.
+If none of the options are declared, HAProxy Ingress configure the listening bind
+based on the IP stack defined in [`--ip-mode`]({{% relref "command-line#ip-mode" %}})
+command-line option.
 
 Any HAProxy supported option can be used, this will be copied verbatim to the
 bind keyword. See HAProxy
@@ -1034,6 +1040,7 @@ Special care should be taken on port number overlap on global, and annotation ba
 See also:
 
 * https://docs.haproxy.org/3.0/configuration.html#4-bind
+* [--ip-mode]({{% relref "command-line#ip-mode" %}}) command-line option
 * [Bind IP addr](#bind-ip-addr)
 * [Bind port](#bind-port)
 * [HTTP Frontends](#http-frontends) configuration keys
@@ -1052,7 +1059,8 @@ See also:
 
 Define listening IPv4/IPv6 address on public HAProxy frontends. Since v0.10 the default
 value changed from `*` to an empty string, which haproxy interprets in the same way and
-binds on all IPv4 address.
+binds on all IPv4 and/or IPv6 addresses, depending on the [`--ip-mode`]({{% relref "command-line#ip-mode" %}})
+command-line option.
 
 * `bind-ip-addr-tcp`: IP address of all ConfigMap based TCP services declared on [`tcp-services-configmap`]({{% relref "command-line#tcp-services-configmap" %}}) command-line option.
 * `bind-ip-addr-healthz`: IP address of the health check URL.

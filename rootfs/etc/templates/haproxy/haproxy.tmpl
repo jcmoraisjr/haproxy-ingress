@@ -1055,14 +1055,14 @@ backend {{ $bind.AuthBackendName }}
 {{- range $snippet := index $global.CustomProxy $bind.AuthBackendName }}
     {{ $snippet }}
 {{- end }}
-    server {{ $bind.AuthBackendName }} 127.0.0.1:{{ $bind.LocalPort }}
+    server {{ $bind.AuthBackendName }} {{ $bind.Loopback }}:{{ $bind.LocalPort }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
 frontend {{ $proxy.Name }}
     mode http
 {{- range $bind := $proxy.BindList }}
-    bind 127.0.0.1:{{ $bind.LocalPort }}
+    bind {{ $bind.Loopback }}:{{ $bind.LocalPort }}
         {{- if $use_socket }} id {{ $bind.SocketID }}{{ end }}
 {{- end }}
 
@@ -1371,7 +1371,7 @@ frontend {{ $frontend.Name }}
 # #
 #     HTTPS frontend
 #
-{{- $httpsFrontendName := printf "%s%s" $frontend.Name (iif $hasSSLPassthrough "__local" "") }}
+{{- $httpsFrontendName := $frontend.RenderedName }}
 frontend {{ $httpsFrontendName }}
     mode http
 
@@ -1660,7 +1660,7 @@ frontend {{ $httpsFrontendName }}
 {{- range $host := $frontend.Hosts }}
 {{- range $path := $host.Paths }}
 {{- if $path.AuthExtFront.AuthPath }}
-{{- template "authExternal" map $path.AuthExtFront (printf "{ var(req.base) -m str %s '%s' }" $path.Link.HAMatch $path.Link.Key) }}
+{{- template "authExternal" map $path.AuthExtFront (printf "{ var(req.base) -m %s '%s' }" $path.Link.HAMatch $path.Link.Key) }}
 {{- end }}
 {{- end }}
 {{- end }}

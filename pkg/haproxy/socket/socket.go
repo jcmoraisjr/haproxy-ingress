@@ -264,7 +264,7 @@ func HAProxyProcs(ctx context.Context, masterSocket HAProxySocket) (*ProcTable, 
 		}
 		time.Sleep(wait)
 		out, err := masterSocket.Send(nil, "show proc")
-		if !waitHAProxy(masterSocket, err) {
+		if !waitHAProxy(err) {
 			if len(out) > 0 {
 				return buildProcTable(out[0]), err
 			}
@@ -281,21 +281,18 @@ func HAProxyProcs(ctx context.Context, masterSocket HAProxySocket) (*ProcTable, 
 	}
 }
 
-func waitHAProxy(sock HAProxySocket, err error) bool {
+// waitHAProxy checks if the reported error, if any, is known from HAProxy not properly responding yet.
+// It returns true in case of connection refused, connection reset or socket file not found, which means
+// to the caller that it is suggested to give a few more time to HAProxy.
+// It returns false in case there is no error, or the returned error is an unexpected one.
+func waitHAProxy(err error) bool {
 	if err == nil {
 		// connection succeeded, no need to wait (wait = FALSE)
 		return false
 	}
-	if k8snet.IsConnectionRefused(err) || k8snet.IsConnectionReset(err) {
-		// connection refused or connection reset, give more time to haproxy (wait = TRUE)
-		return true
-	}
-	// now check if err (which is not nil) means unix socket not found
-	// should continue if socket not found, giving more time to haproxy create it
-	_, e := os.Stat(sock.Address())
-	notFound := e != nil && errors.Is(err, os.ErrNotExist)
-	// should wait (wait = TRUE) if file was not found
-	return notFound
+	// connection refused, connection reset or socket file not found: give more time to haproxy (wait = TRUE)
+	shouldWait := k8snet.IsConnectionRefused(err) || k8snet.IsConnectionReset(err) || errors.Is(err, os.ErrNotExist)
+	return shouldWait
 }
 
 // buildProcTable parses `show proc` output and creates a corresponding ProcTable

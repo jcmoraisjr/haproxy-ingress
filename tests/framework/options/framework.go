@@ -1,5 +1,9 @@
 package options
 
+import (
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
+)
+
 type Framework func(o *frameworkOpt)
 
 func CRDs(crds ...string) Framework {
@@ -10,8 +14,17 @@ func CRDs(crds ...string) Framework {
 	}
 }
 
+type OptOverrideCallback = func(opt *config.Options)
+
+func OptOverride(optOverride OptOverrideCallback) Framework {
+	return func(o *frameworkOpt) {
+		o.OptOverride = optOverride
+	}
+}
+
 type frameworkOpt struct {
-	CRDPaths []string
+	CRDPaths    []string
+	OptOverride OptOverrideCallback
 }
 
 func ParseFrameworkOptions(opts ...Framework) (opt frameworkOpt) {

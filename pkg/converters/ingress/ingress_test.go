@@ -358,7 +358,7 @@ func TestSyncDrainSupport(t *testing.T) {
 	pod2 := c.createPod1("default/echo-yyyyy", "172.17.1.104", "none:8080")
 	c.cache.TermPodList[svcName] = []*api.Pod{pod1, pod2}
 
-	c.cache.Changed.GlobalConfigMapDataNew = map[string]string{"drain-support": "true"}
+	c.hconfig.Global().DrainSupport.Drain = true
 	c.Sync(
 		c.createIng1("default/echo", "echo.example.com", "/", "echo:8080"),
 	)
@@ -2543,7 +2543,11 @@ func (c *testConfig) SyncConverter(conv *converter, ing ...*networking.Ingress) 
 		// first run, set GlobalNew != nil and run SyncFull
 		c.cache.Changed.GlobalConfigMapDataNew = map[string]string{}
 	}
-	c.cache.SecretTLSPath["system/default"] = "/tls/tls-default.pem"
+	// default crt is populated via global converter
+	c.hconfig.Global().SSL.DefaultCrt = hatypes.CertificateConfig{
+		Filename: "/tls/tls-default.pem",
+		Hash:     "1",
+	}
 	if conv == nil {
 		conv = c.createConverter()
 	}
@@ -2553,12 +2557,11 @@ func (c *testConfig) SyncConverter(conv *converter, ing ...*networking.Ingress) 
 }
 
 func (c *testConfig) createConverter() *converter {
-	defaultConfig := func() map[string]string {
-		return map[string]string{
-			ingtypes.BackInitialWeight: "100",
-			ingtypes.GlobalHTTPPort:    strconv.Itoa(TestPortHTTP),
-			ingtypes.GlobalHTTPSPort:   strconv.Itoa(TestPortHTTPS),
-		}
+	defaultsOverride := map[string]string{
+		ingtypes.BackBalanceAlgorithm: "",
+		ingtypes.BackInitialWeight:    "100",
+		ingtypes.GlobalHTTPPort:       strconv.Itoa(TestPortHTTP),
+		ingtypes.GlobalHTTPSPort:      strconv.Itoa(TestPortHTTPS),
 	}
 	return NewIngressConverter(
 		&convtypes.ConverterOptions{
@@ -2566,7 +2569,7 @@ func (c *testConfig) createConverter() *converter {
 			Logger:           c.logger,
 			Tracker:          c.tracker,
 			DynamicConfig:    &convtypes.DynamicConfig{},
-			DefaultConfig:    defaultConfig,
+			DefaultsOverride: defaultsOverride,
 			DefaultBackend:   "system/default",
 			DefaultCrtSecret: "system/default",
 			AnnotationPrefix: []string{"ingress.kubernetes.io"},
@@ -2774,10 +2777,10 @@ func (c *testConfig) compareText(actual, expected string) {
 
 type updaterMock struct{}
 
-func (u *updaterMock) UpdateGlobalConfig(haproxyConfig haproxy.Config, config *annotations.Mapper) {
+func (u *updaterMock) UpdateGlobalConfig(config *annotations.Mapper) {
 }
 
-func (u *updaterMock) UpdatePeers(haproxyConfig haproxy.Config, config *annotations.Mapper) {
+func (u *updaterMock) UpdatePeers(config *annotations.Mapper) {
 }
 
 func (u *updaterMock) UpdateTCPPortConfig(tcp *hatypes.TCPServicePort, mapper *annotations.Mapper) {

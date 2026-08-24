@@ -3763,7 +3763,7 @@ func TestInstanceFrontendAuth(t *testing.T) {
 				{iplist: []string{"10.0.0.1", "10.0.0.2"}, port: 8080},
 			},
 			expback: `
-backend _auth_backend001_8080
+backend _auth_186e4ccebfa4_8080
     mode http
     server srv001 10.0.0.1:8080 weight 1
     server srv002 10.0.0.2:8080 weight 1`,
@@ -3774,7 +3774,7 @@ backend _auth_4001
 frontend _front__auth
     mode http
     bind 127.0.0.1:4001
-    use_backend _auth_backend001_8080`,
+    use_backend _auth_186e4ccebfa4_8080`,
 		},
 		{
 			backs: []back{
@@ -3783,16 +3783,16 @@ frontend _front__auth
 				{iplist: []string{"10.0.0.3"}, port: 8080, hostname: "app1.local"},
 			},
 			expback: `
-backend _auth_backend001_8080
+backend _auth_1774cdf3ca22_8080
+    mode http
+    http-request set-header Host app1.local
+    server srv001 10.0.0.3:8080 weight 1
+backend _auth_186e4ccebfa4_8080
     mode http
     server srv001 10.0.0.1:8080 weight 1
     server srv002 10.0.0.2:8080 weight 1
-backend _auth_backend002_8080
+backend _auth_a9a5126d7cca_8080
     mode http
-    server srv001 10.0.0.3:8080 weight 1
-backend _auth_backend003_8080
-    mode http
-    http-request set-header Host app1.local
     server srv001 10.0.0.3:8080 weight 1`,
 			expfront: `
 backend _auth_4001
@@ -3809,9 +3809,9 @@ frontend _front__auth
     bind 127.0.0.1:4001 id 14001
     bind 127.0.0.1:4002 id 14002
     bind 127.0.0.1:4003 id 14003
-    use_backend _auth_backend001_8080 if { so_id 14001 }
-    use_backend _auth_backend002_8080 if { so_id 14002 }
-    use_backend _auth_backend003_8080 if { so_id 14003 }`,
+    use_backend _auth_186e4ccebfa4_8080 if { so_id 14001 }
+    use_backend _auth_a9a5126d7cca_8080 if { so_id 14002 }
+    use_backend _auth_1774cdf3ca22_8080 if { so_id 14003 }`,
 		},
 	}
 	for _, test := range testCases {
@@ -3830,7 +3830,7 @@ frontend _front__auth
 
 		for _, back := range test.backs {
 			backend := c.config.Backends().AcquireAuthBackend(back.iplist, back.port, back.hostname)
-			_, _ = auth.AcquireAuthBackendName(backend.BackendID())
+			_, _ = auth.AcquireAuthBackendName(backend.BackendID(), hatypes.IPModeV4)
 		}
 
 		c.Update()
@@ -3873,8 +3873,8 @@ func TestInstanceFrontendAuthExternal(t *testing.T) {
 				HeadersSucceed:  allHeaders,
 			},
 			expconfig: `
-    http-request lua.auth-intercept d_app1_8080 /auth GET '*' '*' '*' if { var(req.base) -m str beg 'd.local#/' }
-    http-request deny if !{ var(txn.auth_response_successful) -m bool } { var(req.base) -m str beg 'd.local#/' }`,
+    http-request lua.auth-intercept d_app1_8080 /auth GET '*' '*' '*' if { var(req.base) -m beg 'd.local#/' }
+    http-request deny if !{ var(txn.auth_response_successful) -m bool } { var(req.base) -m beg 'd.local#/' }`,
 		},
 		"test04": {
 			authext: hatypes.AuthExternal{
@@ -3887,9 +3887,9 @@ func TestInstanceFrontendAuthExternal(t *testing.T) {
 				HeadersVars:     map[string]string{"X-UserID": "req.auth_response_header.x_user_id"},
 			},
 			expconfig: `
-    http-request lua.auth-intercept d_app1_8080 /auth POST '*' '*' 'X-Reason' if { var(req.base) -m str beg 'd.local#/' }
-    http-request deny if !{ var(txn.auth_response_successful) -m bool } { var(req.base) -m str beg 'd.local#/' }
-    http-request set-header X-UserID %[var(req.auth_response_header.x_user_id)] if { var(req.auth_response_header.x_user_id) -m found } { var(req.base) -m str beg 'd.local#/' }`,
+    http-request lua.auth-intercept d_app1_8080 /auth POST '*' '*' 'X-Reason' if { var(req.base) -m beg 'd.local#/' }
+    http-request deny if !{ var(txn.auth_response_successful) -m bool } { var(req.base) -m beg 'd.local#/' }
+    http-request set-header X-UserID %[var(req.auth_response_header.x_user_id)] if { var(req.auth_response_header.x_user_id) -m found } { var(req.base) -m beg 'd.local#/' }`,
 		},
 		"test05": {
 			authext: hatypes.AuthExternal{
@@ -3902,8 +3902,8 @@ func TestInstanceFrontendAuthExternal(t *testing.T) {
 				RedirectOnFail:  "/login",
 			},
 			expconfig: `
-    http-request lua.auth-intercept d_app1_8080 /auth POST 'X-UserID,X-GroupID' '*' '*' if { var(req.base) -m str beg 'd.local#/' }
-    http-request redirect location /login if !{ var(txn.auth_response_successful) -m bool } { var(req.base) -m str beg 'd.local#/' }`,
+    http-request lua.auth-intercept d_app1_8080 /auth POST 'X-UserID,X-GroupID' '*' '*' if { var(req.base) -m beg 'd.local#/' }
+    http-request redirect location /login if !{ var(txn.auth_response_successful) -m bool } { var(req.base) -m beg 'd.local#/' }`,
 		},
 		"test06": {
 			authext: hatypes.AuthExternal{
@@ -3917,8 +3917,8 @@ func TestInstanceFrontendAuthExternal(t *testing.T) {
 				AllowedPath:     "/login",
 			},
 			expconfig: `
-    http-request lua.auth-intercept d_app1_8080 /login POST '*' 'X-Region,X-Tenant' '*' if !{ path_beg /login } { var(req.base) -m str beg 'd.local#/' }
-    http-request redirect location /login if !{ var(txn.auth_response_successful) -m bool } !{ path_beg /login } { var(req.base) -m str beg 'd.local#/' }`,
+    http-request lua.auth-intercept d_app1_8080 /login POST '*' 'X-Region,X-Tenant' '*' if !{ path_beg /login } { var(req.base) -m beg 'd.local#/' }
+    http-request redirect location /login if !{ var(txn.auth_response_successful) -m bool } !{ path_beg /login } { var(req.base) -m beg 'd.local#/' }`,
 		},
 		"test07": {
 			authext: hatypes.AuthExternal{
@@ -3926,7 +3926,7 @@ func TestInstanceFrontendAuthExternal(t *testing.T) {
 				AlwaysDeny: true,
 			},
 			expconfig: `
-    http-request deny if { var(req.base) -m str beg 'd.local#/' }`,
+    http-request deny if { var(req.base) -m beg 'd.local#/' }`,
 		},
 	}
 
@@ -4179,7 +4179,7 @@ func TestInstanceCustomProxy(t *testing.T) {
 	auth.RangeStart = 4001
 	auth.RangeEnd = 4010
 	authBackend := c.config.Backends().AcquireAuthBackend([]string{"172.17.100.11"}, 5000, "")
-	_, _ = auth.AcquireAuthBackendName(authBackend.BackendID())
+	_, _ = auth.AcquireAuthBackendName(authBackend.BackendID(), hatypes.IPModeV4)
 
 	tcp := c.config.tcpbackends.Acquire("default_pgsql", 5432)
 	tcp.AddEndpoint("172.17.0.21", 5432)
@@ -4190,7 +4190,6 @@ func TestInstanceCustomProxy(t *testing.T) {
 	c.config.Global().CustomProxy = map[string][]string{
 		"missing":                 {"## comment"},
 		"_tcp_default_pgsql_5432": {"## custom for _tcp_default_pgsql_5432"},
-		"_auth_backend001_5000":   {"## custom for _auth_backend001_5000"},
 		"d1_app_8080":             {"## custom for d1_app_8080"},
 		"d2_app_8080":             {"## custom for d2_app_8080"},
 		"_redirect_https":         {"## custom for _redirect_https"},
@@ -4216,9 +4215,8 @@ listen _tcp_default_pgsql_5432
     mode tcp
     ## custom for _tcp_default_pgsql_5432
     server srv001 172.17.0.21:5432
-backend _auth_backend001_5000
+backend _auth_4ceb9bbcb3fd_5000
     mode http
-    ## custom for _auth_backend001_5000
     server srv001 172.17.100.11:5000 weight 1
 backend d1_app_8080
     mode http
@@ -4253,7 +4251,7 @@ frontend _front__auth
     mode http
     bind 127.0.0.1:4001
     ## custom for _front__auth
-    use_backend _auth_backend001_5000
+    use_backend _auth_4ceb9bbcb3fd_5000
 frontend _front_tcp_7001
     bind :7001
     mode tcp
@@ -4821,6 +4819,81 @@ d3.local#/ d3_app1-http_8080
 `)
 	c.checkMap("_front_https_bind_crt.list", `
 /var/haproxy/ssl/certs/default.pem !*
+`)
+
+	c.logger.CompareLogging(defaultLogging)
+}
+
+func TestInstanceSSLPassthroughFrontendACL(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	var h *hatypes.Host
+	var b *hatypes.Backend
+
+	fhttp := c.httpFrontend(80)
+	fhttps := c.httpsFrontend(443)
+
+	// A backend accessible from both HTTP and HTTPS frontends with
+	// different path config (SSLRedirect on HTTP) to trigger NeedFrontendACL.
+	b = c.config.Backends().AcquireBackend("d1", "app", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS1}
+
+	h = fhttp.AcquireHost("d1.local")
+	h.AddPath(b, "/", hatypes.MatchBegin).SSLRedirect = true
+
+	h = fhttps.AcquireHost("d1.local")
+	h.AddPath(b, "/", hatypes.MatchBegin)
+	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
+	h.TLS.TLSHash = "0"
+
+	// SSL passthrough host on a different hostname, same HTTPS frontend.
+	// This causes the HTTPS frontend to be rendered as _front_https__local.
+	b2 := c.config.Backends().AcquireBackend("d2", "ssl-app", "8443")
+	b2.Endpoints = []*hatypes.Endpoint{endpointS21}
+	b2.ModeTCP = true
+
+	h = fhttps.AcquireHost("d2.local")
+	h.AddPath(b2, "/", hatypes.MatchBegin)
+	h.SSLPassthrough = true
+
+	c.Update()
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+backend d1_app_8080
+    mode http
+    acl https-request ssl_fc
+    # path01 = fe:_front_http -- host/path:d1.local/
+    # path02 = fe:_front_https__local -- host/path:d1.local/
+    http-request set-var-fmt(req.fe) "%f"
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_front_http_req__begin.map) if { var(req.fe) -m str _front_http }
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_front_https__local_req__begin.map) if { var(req.fe) -m str _front_https__local }
+    http-request redirect scheme https if !https-request { var(txn.pathID) -m str path01 }
+    server s1 172.17.0.11:8080 weight 100
+backend d2_ssl-app_8443
+    mode tcp
+    server s21 172.17.0.121:8080 weight 100
+<<backends-default>>
+<<frontend-http>>
+    default_backend _error404
+listen _front__tls
+    mode tcp
+    bind :443
+    tcp-request inspect-delay 5s
+    tcp-request content set-var(req.sslpassback) req.ssl_sni,lower,map_str(/etc/haproxy/maps/_front_https_sslpassthrough__exact.map)
+    tcp-request content accept if { req.ssl_hello_type 1 }
+    use_backend %[var(req.sslpassback)]
+    server _default_server_front_https_socket unix@/var/run/haproxy/_front_https_socket.sock send-proxy-v2
+frontend _front_https__local
+    mode http
+    bind unix@/var/run/haproxy/_front_https_socket.sock accept-proxy ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_https_bind_crt.list ca-ignore-err all crt-ignore-err all
+    <<set-req-base>>
+    http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_host__begin.map)
+    <<https-headers>>
+    use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
+    default_backend _error404
+<<support>>
 `)
 
 	c.logger.CompareLogging(defaultLogging)
@@ -6264,6 +6337,7 @@ func setupOptions(options testOptions) *testConfig {
 		HAProxyMapsDir: tempdir,
 		Metrics:        helper_test.NewMetricsMock(),
 		BackendShards:  options.shardCount,
+		IPMode:         hatypes.IPModeV4,
 		//
 		fake: true,
 	}).(*instance)
@@ -6331,7 +6405,6 @@ func setupOptions(options testOptions) *testConfig {
 		t.Errorf("error parsing modsecurity.tmpl: %v", err)
 	}
 	config := instance.Config().(*config)
-	config.frontends.DefaultCrtFile = "/var/haproxy/ssl/certs/default.pem"
 	c := &testConfig{
 		t:        t,
 		logger:   logger,
@@ -6363,6 +6436,7 @@ func (c *testConfig) configGlobal(global *hatypes.Global) {
 	global.SSL.BackendCipherSuites = "TLS_AES_128_GCM_SHA256"
 	global.SSL.Ciphers = "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256"
 	global.SSL.CipherSuites = "TLS_AES_128_GCM_SHA256"
+	global.SSL.DefaultCrt.Filename = "/var/haproxy/ssl/certs/default.pem"
 	global.SSL.DHParam.Filename = "/var/haproxy/tls/dhparam.pem"
 	global.SSL.HeadersPrefix = "X-SSL"
 	global.SSL.Options = "no-sslv3"

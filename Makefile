@@ -41,7 +41,7 @@ run: build
 
 .PHONY: gotestsum
 gotestsum:
-	test -x $(LOCAL_GOTESTSUM) || GOBIN=$(LOCALBIN) go install gotest.tools/gotestsum@latest
+	test -x $(LOCAL_GOTESTSUM) || GOBIN=$(LOCALBIN) go install gotest.tools/gotestsum@v1.13.0
 
 .PHONY: test
 test: gotestsum
@@ -50,7 +50,7 @@ test: gotestsum
 
 .PHONY: golangci-lint
 golangci-lint:
-	test -x $(LOCAL_GOLANGCI_LINT) || GOBIN=$(LOCALBIN) go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+	test -x $(LOCAL_GOLANGCI_LINT) || GOBIN=$(LOCALBIN) go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.11.4
 
 .PHONY: lint
 lint: golangci-lint
@@ -62,7 +62,7 @@ check-spelling:
 
 .PHONY: setup-envtest
 setup-envtest:
-	test -x $(LOCAL_SETUP_ENVTEST) || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+	test -x $(LOCAL_SETUP_ENVTEST) || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@v0.0.0-20260305142021-f9589b9f2b9d # v0.23.3
 	$(LOCAL_SETUP_ENVTEST) use $(HAPROXY_INGRESS_ENVTEST) --bin-dir $(LOCALBIN)
 
 .PHONY: test-integration

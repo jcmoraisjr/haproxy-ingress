@@ -210,6 +210,9 @@ func (c *c) ExternalNameLookup(externalName string) ([]net.IP, error) {
 }
 
 func (c *c) GetIngress(ingressName string) (*networking.Ingress, error) {
+	if !c.config.WatchIngress {
+		return nil, fmt.Errorf("ingress API is not enabled")
+	}
 	ing := networking.Ingress{}
 	err := c.get(ingressName, &ing)
 	if err == nil && !c.IsValidIngress(&ing) {
@@ -219,6 +222,9 @@ func (c *c) GetIngress(ingressName string) (*networking.Ingress, error) {
 }
 
 func (c *c) GetIngressList() ([]*networking.Ingress, error) {
+	if !c.config.WatchIngress {
+		return nil, nil
+	}
 	list := networking.IngressList{}
 	if err := c.client.List(c.ctx, &list); err != nil {
 		return nil, err
@@ -234,6 +240,9 @@ func (c *c) GetIngressList() ([]*networking.Ingress, error) {
 }
 
 func (c *c) GetIngressClass(className string) (*networking.IngressClass, error) {
+	if !c.config.WatchIngress {
+		return nil, fmt.Errorf("ingress API is not enabled")
+	}
 	class := networking.IngressClass{}
 	err := c.get(className, &class)
 	return &class, err

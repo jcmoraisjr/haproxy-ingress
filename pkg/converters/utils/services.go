@@ -24,7 +24,8 @@ import (
 	api "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
+	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
+	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 )
 
 // FindServicePort ...
@@ -79,7 +80,7 @@ func createEndpointSlices(endpointSlices []*discoveryv1.EndpointSlice, svcPort *
 	for _, endpointSlice := range endpointSlices {
 		var loopbackEndpoint, portsAsReplicas bool
 		if ann := endpointSlice.GetAnnotations(); ann != nil {
-			loopbackEndpoint = ann["internal.haproxy-ingress.github.io/loopback-endpoint"] == "1"
+			loopbackEndpoint = ann["internal.haproxy-ingress.github.io/loopbackv4-endpoint"] == "1"
 			portsAsReplicas = ann["internal.haproxy-ingress.github.io/ports-as-replicas"] == "1"
 		}
 		for _, epPort := range endpointSlice.Ports {
@@ -88,7 +89,7 @@ func createEndpointSlices(endpointSlices []*discoveryv1.EndpointSlice, svcPort *
 				// from distinct port numbers instead of distinct endpoints+addresses. Endpoint
 				// is hardcoded to loopback and no other Service and EndpointSlice configuration
 				// is checked.
-				ready = append(ready, newEndpoint("127.0.0.1", int(*epPort.Port), nil))
+				ready = append(ready, newEndpoint(hatypes.LoopbackV4, int(*epPort.Port), nil))
 				continue
 			}
 
@@ -120,7 +121,7 @@ func createEndpointSlices(endpointSlices []*discoveryv1.EndpointSlice, svcPort *
 				// address here.
 				addr := endpoint.Addresses[0]
 				if loopbackEndpoint {
-					addr = "127.0.0.1"
+					addr = hatypes.LoopbackV4
 				}
 				domainEndpoint := newEndpoint(addr, int(*epPort.Port), endpoint.TargetRef)
 
@@ -146,7 +147,7 @@ func createEndpointSlices(endpointSlices []*discoveryv1.EndpointSlice, svcPort *
 }
 
 // CreateEndpoints ...
-func CreateEndpoints(cache types.Cache, svc *api.Service, svcPort *api.ServicePort) (ready, notReady []*Endpoint, err error) {
+func CreateEndpoints(cache convtypes.Cache, svc *api.Service, svcPort *api.ServicePort) (ready, notReady []*Endpoint, err error) {
 	switch svc.Spec.Type {
 	case api.ServiceTypeExternalName:
 		ready, err = createEndpointsExternalName(cache, svc, svcPort)
@@ -176,7 +177,7 @@ func CreateSvcEndpoint(svc *api.Service, svcPort *api.ServicePort) (endpoint *En
 	return newEndpoint(svc.Spec.ClusterIP, int(port), nil), nil
 }
 
-func createEndpointsExternalName(cache types.Cache, svc *api.Service, svcPort *api.ServicePort) (endpoints []*Endpoint, err error) {
+func createEndpointsExternalName(cache convtypes.Cache, svc *api.Service, svcPort *api.ServicePort) (endpoints []*Endpoint, err error) {
 	port := int(svcPort.Port)
 	if port <= 0 {
 		return nil, fmt.Errorf("invalid port number: %d", port)

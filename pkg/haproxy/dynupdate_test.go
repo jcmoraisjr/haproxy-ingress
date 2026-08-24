@@ -87,7 +87,7 @@ INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' on backend/server 'defau
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
-				b.AddEmptyEndpoint()
+				b.AddEmptyEndpoint(types.IPModeV4)
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
@@ -242,7 +242,7 @@ INFO-V(2) updated endpoint '172.17.0.2:8080' weight '2' on backend/server 'defau
 		"test09": {
 			doconfig1: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
-				b.AddEmptyEndpoint()
+				b.AddEmptyEndpoint(types.IPModeV4)
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
 			},
 			doconfig2: func(c *testConfig) {
@@ -277,7 +277,7 @@ INFO-V(2) enabled endpoint '172.17.0.2:8080' weight '1' on backend/server 'defau
 		"test10": {
 			doconfig1: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
-				b.AddEmptyEndpoint()
+				b.AddEmptyEndpoint(types.IPModeV4)
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
 			},
 			doconfig2: func(c *testConfig) {
@@ -404,7 +404,7 @@ INFO-V(2) disabled endpoint '172.17.0.4:8080' weight '1' on backend/server 'defa
 			doconfig1: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
-				b.AddEmptyEndpoint()
+				b.AddEmptyEndpoint(types.IPModeV4)
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
@@ -432,8 +432,8 @@ INFO-V(2) need to reload due to config changes: [backends]`,
 			doconfig1: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
-				b.AddEmptyEndpoint()
-				b.AddEmptyEndpoint()
+				b.AddEmptyEndpoint(types.IPModeV4)
+				b.AddEmptyEndpoint(types.IPModeV4)
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
@@ -528,7 +528,7 @@ INFO-V(2) need to reload due to config changes: [backends]`,
 			doconfig1: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "").Label = "green"
-				b.AddEmptyEndpoint()
+				b.AddEmptyEndpoint(types.IPModeV4)
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
@@ -563,7 +563,7 @@ INFO-V(2) enabled endpoint '172.17.0.3:8080' weight '1' on backend/server 'defau
 			doconfig1: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "").Label = "green"
-				b.AddEmptyEndpoint()
+				b.AddEmptyEndpoint(types.IPModeV4)
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
@@ -899,7 +899,7 @@ INFO-V(2) updated endpoint '172.17.0.3:8080' weight '1' on backend/server 'defau
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.Resolver = "k8s"
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
-				b.AddEmptyEndpoint()
+				b.AddEmptyEndpoint(types.IPModeV4)
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
