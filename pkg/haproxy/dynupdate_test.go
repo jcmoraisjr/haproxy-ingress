@@ -1475,7 +1475,7 @@ INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' on backend/server 'defau
 				b.EpNaming = types.EpIPPort
 				b.ServerRename = true
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
-				b.AddEmptyEndpoint()
+				b.AddEmptyEndpoint(types.IPModeV4)
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
