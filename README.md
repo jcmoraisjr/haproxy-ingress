@@ -1,16 +1,16 @@
-# HAProxy Ingress controller
+# N42 Gateway
 
-[Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/) controller
+[Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/) and [Gateway API](https://gateway-api.sigs.k8s.io/) controller
 implementation for [HAProxy](http://www.haproxy.org/) loadbalancer.
 
-[![build](https://img.shields.io/github/actions/workflow/status/n42-gateway/n42-gateway/build.yaml?branch=master&logo=github)](https://github.com/n42-gateway/n42-gateway/actions/workflows/build.yaml) [![helm](https://img.shields.io/badge/helm%20chart-ready-blue?logo=helm)](https://artifacthub.io/packages/helm/haproxy-ingress/haproxy-ingress)
+[![build](https://img.shields.io/github/actions/workflow/status/n42-gateway/n42-gateway/build.yaml?branch=master&logo=github)](https://github.com/n42-gateway/n42-gateway/actions/workflows/build.yaml) [![helm](https://img.shields.io/badge/helm%20chart-ready-blue?logo=helm)](https://artifacthub.io/packages/helm/n42-gateway/n42-gateway)
 
-HAProxy Ingress is a Kubernetes ingress controller: it configures a HAProxy instance
+N42 Gateway is a Kubernetes Ingress and Gateway API controller: it configures a HAProxy instance
 to route incoming requests from an external network to the in-cluster applications.
 The routing configurations are built reading specs from the Kubernetes cluster.
 Updates made to the cluster are applied on the fly to the HAProxy instance.
 
-## Use HAProxy Ingress
+## Use N42 Gateway
 
 **Documentation:**
 
@@ -20,7 +20,7 @@ Updates made to the cluster are applied on the fly to the HAProxy instance.
 
 **Supported versions:**
 
-| HAProxy Ingress                                      | Embedded<br/>HAProxy | Supported<br/>Kubernetes | External<br/>HAProxy (*) |
+| N42 Gateway                                          | Embedded<br/>HAProxy | Supported<br/>Kubernetes | External<br/>HAProxy (*) |
 |------------------------------------------------------|----------------------|--------------------------|--------------------------|
 | [`v0.17`](CHANGELOG/CHANGELOG-v0.17.md) (alpha)      | `3.0`                | `1.21+`                  | `2.6+`                   |
 | [`v0.16`](CHANGELOG/CHANGELOG-v0.16.md) (latest)     | `2.8`                | `1.21+`                  | `2.4+`                   |
@@ -34,21 +34,20 @@ Updates made to the cluster are applied on the fly to the HAProxy instance.
 
 **Community:**
 
-* [Slack](https://kubernetes.slack.com/channels/haproxy-ingress): We're in the [#haproxy-ingress](https://kubernetes.slack.com/channels/haproxy-ingress) channel on Kubernetes Slack. Take an [invite](https://slack.k8s.io) if not subscribed yet
-* [Users mailing list](https://groups.google.com/forum/#!forum/haproxy-ingress): Announcements and discussion on a mailing list
-* [Stack Overflow](https://stackoverflow.com/questions/tagged/haproxy-ingress): Practical questions and curated answers
+* [Slack](https://kubernetes.slack.com/channels/n42-gateway): We're in the [#n42-gateway](https://kubernetes.slack.com/channels/n42-gateway) channel on Kubernetes Slack. Take an [invite](https://slack.k8s.io) if not subscribed yet
+* [Discussions](https://github.com/n42-gateway/n42-gateway/discussions): Follow announcements and ask questions on GitHub Discussions.
 
-## Develop HAProxy Ingress
+## Develop N42 Gateway
 
 The instructions below are valid for v0.14 and newer. See [v0.13](https://github.com/n42-gateway/n42-gateway/blob/release-0.13/README.md#develop-haproxy-ingress) branch for older versions.
 
 **Building and running locally:**
 
 ```
-mkdir -p $GOPATH/src/github.com/jcmoraisjr
-cd $GOPATH/src/github.com/jcmoraisjr
+mkdir -p $GOPATH/src/github.com/n42-gateway
+cd $GOPATH/src/github.com/n42-gateway
 git clone https://github.com/n42-gateway/n42-gateway.git
-cd haproxy-ingress
+cd n42-gateway
 make run
 ```
 
@@ -61,13 +60,13 @@ Dependencies to run locally:
 
 **Building container image:**
 
-Fast build - cross compile for linux (locally) and generate `localhost/haproxy-ingress:latest`:
+Fast build - cross compile for linux (locally) and generate `localhost/n42-gateway:latest`:
 
 ```
 make image
 ```
 
-Official image - build in a multi-stage Dockerfile and generate `localhost/haproxy-ingress:latest`:
+Official image - build in a multi-stage Dockerfile and generate `localhost/n42-gateway:latest`:
 
 ```
 make docker-build
@@ -88,19 +87,23 @@ helm install n42 n42/n42-gateway\
 
 The following `make` variables are supported:
 
-* `CONTROLLER_TAG` (defaults to `localhost/haproxy-ingress:latest`): tag name for `make image` and `make docker-build`.
-* `LOCAL_FS_PREFIX` (defaults to `/tmp/haproxy-ingress`): temporary directory for `make run`.
+* `CONTROLLER_TAG` (defaults to `localhost/n42-gateway:latest`): tag name for `make image` and `make docker-build`.
+* `LOCAL_FS_PREFIX` (defaults to `/tmp/n42-gateway`): temporary directory for `make run`.
 * `KUBECONFIG` (defaults to `$KUBECONFIG`, or `$(HOME)/.kube/config` if the former is empty): Kubernetes from where to read Ingress configurations.
 * `CONTROLLER_CONFIGMAP`: `<namespace>/<name>` of the ConfigMap with global configurations.
 * `CONTROLLER_ARGS`: space separated list of additional command-line arguments.
 
 The following `make` targets are supported:
 
-* `build` (default): Compiles HAProxy Ingress using the default OS and arch, and generates an executable at `bin/controller`.
-* `run`: Runs HAProxy Ingress locally.
+* `build` (default): Compiles N42 Gateway using the default OS and arch, and generates an executable at `bin/controller`.
+* `run`: Runs N42 Gateway locally.
 * `lint`: Runs [`golangci-lint`](https://golangci-lint.run/)
 * `test`: Runs unit tests.
-* `test-integration`: Runs integration tests, needs haproxy 2.2+ in the path.
-* `linux-build`: Compiles HAProxy Ingress and generates an ELF (Linux) executable despite the source platform at `rootfs/haproxy-ingress-controller`. Used by `image` step.
-* `image`: Compiles HAProxy Ingress locally and generates a Docker image.
-* `docker-build`: Compiles HAProxy Ingress and generates a Docker image using a multi-stage Dockerfile.
+* `test-integration`: Runs integration tests, needs haproxy 2.6+ in the path.
+* `linux-build`: Compiles N42 Gateway and generates an ELF (Linux) executable despite the source platform at `rootfs/n42-gateway-controller`. Used by `image` step.
+* `image`: Compiles N42 Gateway locally and generates a Docker image.
+* `docker-build`: Compiles N42 Gateway and generates a Docker image using a multi-stage Dockerfile.
+
+---
+
+HAProxy is a registered trademark of HAProxy Technologies SAS.
