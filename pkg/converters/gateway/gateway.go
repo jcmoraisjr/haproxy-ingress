@@ -549,7 +549,7 @@ func (c *converter) syncRoute(routeSource *source, routeHostnames []gatewayv1.Ho
 		}
 		if parentGroup != gatewayGroup || parentKind != gatewayKind {
 			// Silently ignore, this is some other parent resource kind.
-			// that cannot (or should not) be pointing to a HAProxy Ingress class.
+			// that cannot (or should not) be pointing to a N42 Gateway class.
 			continue
 		}
 		gwref := types.NamespacedName{
@@ -562,7 +562,7 @@ func (c *converter) syncRoute(routeSource *source, routeHostnames []gatewayv1.Ho
 		gatewayEvent, found := c.events.gateway[gwref]
 		if !found {
 			// Gateway either does not exist, or it was filtered out in the cache
-			// in the case it does not point to a HAProxy Ingress class.
+			// in the case it does not point to a N42 Gateway class.
 			// So just silently ignore as well.
 			continue
 		}
@@ -757,7 +757,7 @@ func (c *converter) acquireListenerEvent(gatewaySource *source, listener *gatewa
 				protoSupportedKinds = []gatewayv1.Kind{tcpRouteKind}
 			}
 		default: // includes UDPProtocolType
-			lstEvent.unsupportedProto = fmt.Sprintf("Protocol unsupported by HAProxy Ingress: %q", listener.Protocol)
+			lstEvent.unsupportedProto = fmt.Sprintf("Protocol unsupported by N42 Gateway: %q", listener.Protocol)
 		}
 		if listener.AllowedRoutes != nil {
 			for _, gk := range listener.AllowedRoutes.Kinds {
@@ -1204,7 +1204,7 @@ func (c *converter) syncGatewayClassStatus() error {
 				Type:               string(gatewayv1.GatewayClassConditionStatusAccepted),
 				Status:             metav1.ConditionTrue,
 				Reason:             string(gatewayv1.GatewayClassReasonAccepted),
-				Message:            "Class accepted by HAProxy Ingress",
+				Message:            "Class accepted by N42 Gateway",
 				ObservedGeneration: gwcls.Generation,
 			})
 		})
@@ -1229,7 +1229,7 @@ func (c *converter) syncGatewayStatus() error {
 				Type:               string(gatewayv1.GatewayConditionAccepted),
 				Status:             metav1.ConditionTrue,
 				Reason:             string(gatewayv1.GatewayReasonAccepted),
-				Message:            "Gateway accepted by HAProxy Ingress",
+				Message:            "Gateway accepted by N42 Gateway",
 				ObservedGeneration: gwGeneration,
 			}
 			changed = meta.SetStatusCondition(&gw.Status.Conditions, conditionGatewayAccepted) || changed

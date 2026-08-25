@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	CertificateIssuerCN = "HAProxy Ingress issuer"
-	CertificateClientCN = "HAProxy Ingress client"
+	CertificateIssuerCN = "N42 Gateway issuer"
+	CertificateClientCN = "N42 Gateway client"
 )
 
 func TLSConnection(collect assert.TestingT, host string, port int32) *tls.Conn {

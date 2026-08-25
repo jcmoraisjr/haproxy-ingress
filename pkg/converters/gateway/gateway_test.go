@@ -834,7 +834,7 @@ func TestGatewayClassStatus(t *testing.T) {
 	c.compareStatus("gatewayclass", gwcls, `
 conditions:
 - lastTransitionTime: "-"
-  message: Class accepted by HAProxy Ingress
+  message: Class accepted by N42 Gateway
   reason: Accepted
   status: "True"
   type: Accepted
@@ -854,7 +854,7 @@ func TestGatewayStatus(t *testing.T) {
 			expStatus: `
 conditions:
 - lastTransitionTime: "-"
-  message: Gateway accepted by HAProxy Ingress
+  message: Gateway accepted by N42 Gateway
   reason: Accepted
   status: "True"
   type: Accepted
@@ -872,7 +872,7 @@ conditions:
 			expStatus: `
 conditions:
 - lastTransitionTime: "-"
-  message: Gateway accepted by HAProxy Ingress
+  message: Gateway accepted by N42 Gateway
   reason: Accepted
   status: "True"
   type: Accepted
@@ -917,7 +917,7 @@ listeners:
 			expStatus: `
 conditions:
 - lastTransitionTime: "-"
-  message: Gateway accepted by HAProxy Ingress
+  message: Gateway accepted by N42 Gateway
   reason: Accepted
   status: "True"
   type: Accepted
@@ -961,7 +961,7 @@ WARN None of the configured route kinds are supported on Gateway 'default/gatewa
 			expStatus: `
 conditions:
 - lastTransitionTime: "-"
-  message: Gateway accepted by HAProxy Ingress
+  message: Gateway accepted by N42 Gateway
   reason: Accepted
   status: "True"
   type: Accepted

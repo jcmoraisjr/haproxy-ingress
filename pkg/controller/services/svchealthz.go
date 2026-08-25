@@ -72,7 +72,7 @@ func (s *svcHealthz) createRootHealthzHandler() http.HandlerFunc {
 	page := `/acme/check (only POST): starts a new check for certificates that need to be issued
 /build : build info
 /debug/pprof/ : pprof index` + pprofDisabled + `
-/metrics : HAProxy Ingress metrics in Prometheus format
+/metrics : N42 Gateway metrics in Prometheus format
 /stop : stops the controller process` + stopDisabled + `
 `
 

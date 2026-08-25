@@ -75,7 +75,7 @@ const (
 )
 
 var (
-	GlobalConfigMap = types.NamespacedName{Namespace: "default", Name: "ingress-controller"}
+	GlobalConfigMap = types.NamespacedName{Namespace: "default", Name: "n42-gateway"}
 
 	FrontLocal1Name  = "FrontLocal1"
 	FrontLocal1HTTP  = RandomPort()

@@ -153,7 +153,7 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 	)
 
 	fs.StringVar(&o.LocalFSPrefix, "local-filesystem-prefix", o.LocalFSPrefix, ""+
-		"Defines the prefix of a temporary directory HAProxy Ingress should create and "+
+		"Defines the prefix of a temporary directory N42 Gateway should create and "+
 		"maintain all the configuration files. Useful for local deployment.",
 	)
 
@@ -249,7 +249,7 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 	)
 
 	fs.DurationVar(&o.ConnectionTimeout, "connection-timeout", o.ConnectionTimeout, ""+
-		"Defines the maximum amount of time HAProxy Ingress should wait for HAProxy "+
+		"Defines the maximum amount of time N42 Gateway should wait for HAProxy "+
 		"responses when connecting to its master or admin sockets.",
 	)
 
@@ -344,7 +344,7 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 	)
 
 	fs.DurationVar(&o.ReloadRetry, "reload-retry", o.ReloadRetry, ""+
-		"How long HAProxy Ingress should wait before trying to reload HAProxy if an error "+
+		"How long N42 Gateway should wait before trying to reload HAProxy if an error "+
 		"happens.")
 
 	fs.DurationVar(&o.WaitBeforeUpdate, "wait-before-update", o.WaitBeforeUpdate, ""+
@@ -425,7 +425,7 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 
 	fs.DurationVar(&o.HAProxyGracePeriod, "haproxy-grace-period", o.HAProxyGracePeriod, ""+
 		"Configures the amount of time HAProxy should wait for all the active connections "+
-		"to finish, after HAProxy Ingress receives the signal from Kubernetes to "+
+		"to finish, after N42 Gateway receives the signal from Kubernetes to "+
 		"terminate. This option is only used on embedded HAProxy configured as "+
 		"master-worker.",
 	)
@@ -529,7 +529,7 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 	)
 
 	fs.BoolVar(&o.DisablePodList, "disable-pod-list", o.DisablePodList, ""+
-		"DEPRECATED: used to define if HAProxy Ingress should disable pod watch and in "+
+		"DEPRECATED: used to define if N42 Gateway should disable pod watch and in "+
 		"memory list. This configuration is now ignored, controller-runtime takes care "+
 		"of it.",
 	)

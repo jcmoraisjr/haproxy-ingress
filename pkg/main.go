@@ -26,7 +26,7 @@ import (
 )
 
 func main() {
-	fs := flag.NewFlagSet("HAProxy Ingress", flag.ExitOnError)
+	fs := flag.NewFlagSet("N42 Gateway", flag.ExitOnError)
 	opt := config.NewOptions()
 	opt.AddFlags(fs)
 	err := fs.Parse(os.Args[1:])

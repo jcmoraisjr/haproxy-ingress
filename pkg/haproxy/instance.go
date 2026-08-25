@@ -429,7 +429,7 @@ func (i *instance) Reload(timer *utils.Timer) error {
 
 func (i *instance) Shutdown() {
 	if !i.up || i.options.IsExternal {
-		// lifecycle isn't controlled by HAProxy Ingress
+		// lifecycle isn't controlled by N42 Gateway
 		return
 	}
 	if i.options.IsMasterWorker {
