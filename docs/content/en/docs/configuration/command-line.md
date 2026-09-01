@@ -87,7 +87,9 @@ The following command-line options are supported:
 
 ---
 
-## Acme
+## Options
+
+### Acme
 
 Configures the acme server and other static options used to authorize and sign certificates
 against a server which implements the acme protocol, version 2.
@@ -99,17 +101,17 @@ Supported acme command-line options:
 * `--acme-fail-initial-duration`: the starting time to wait and retry after a failed authorization and sign process. Defaults to `5m`.
 * `--acme-fail-max-duration`: the time between retries of failed authorization will exponentially grow up to the max duration time. Defaults to `8h`.
 * `--acme-secret-key-name`: secret name used to store the client private key. Defaults to `acme-private-key`. A new key, hence a new client, is created if the secret does not exist.
-* `--acme-server`: mandatory, starts a local server used to answer challenges from the acme environment. This option should be provided on all haproxy-ingress instances to the certificate signing work properly.
-* `--acme-token-configmap-name`: the ConfigMap name used to store temporary tokens generated during the challenge. Defaults to `acme-validation-tokens`. Such tokens need to be stored in k8s because any haproxy-ingress instance might receive the request from the acme environment.
+* `--acme-server`: mandatory, starts a local server used to answer challenges from the acme environment. This option should be provided on all N42 Gateway instances to the certificate signing work properly.
+* `--acme-token-configmap-name`: the ConfigMap name used to store temporary tokens generated during the challenge. Defaults to `acme-validation-tokens`. Such tokens need to be stored in k8s because any N42 Gateway instance might receive the request from the acme environment.
 * `--acme-track-tls-annotation`: defines if ingress objects with annotation `kubernetes.io/tls-acme: "true"` should also be tracked. Defaults to `false`.
 
 See also:
 
-* [acme configuration keys]({{% relref "keys/#acme" %}}) doc, which has also an overview on how acme works on haproxy-ingress
+* [acme configuration keys]({{% relref "keys/#acme" %}}) doc, which has also an overview on how acme works on N42 Gateway
 
 ---
 
-## allow-cross-namespace
+### allow-cross-namespace
 
 * `--allow-cross-namespace`
 
@@ -124,7 +126,7 @@ See also:
 
 ---
 
-## annotations-prefix
+### annotations-prefix
 
 * `--annotations-prefix`
 
@@ -138,13 +140,13 @@ declared twice - if two distinct prefix is used to configure the same key in the
 service resource, the value of the annotation with the prefix that was configured first in this
 command-line option is used.
 
-Annotations with other prefix or without any prefix are ignored. This allows to use HAProxy Ingress
+Annotations with other prefix or without any prefix are ignored. This allows to use N42 Gateway
 with other ingress controllers that shares ingress and service resources without conflicting each
 other.
 
 ---
 
-## apiserver-host
+### apiserver-host
 
 * `--apiserver-host`
 
@@ -155,7 +157,7 @@ attempted.
 
 ---
 
-## backend-shards
+### backend-shards
 
 * `--backend-shards`
 
@@ -167,7 +169,7 @@ services.
 
 ---
 
-## buckets-response-time
+### buckets-response-time
 
 * `--buckets-response-time`
 
@@ -175,7 +177,7 @@ Configures the buckets of the histogram `haproxyingress_haproxy_response_time_se
 
 ---
 
-## configmap
+### configmap
 
 * `--configmap`
 
@@ -185,11 +187,11 @@ silently fail.  Version 0.13 and later will crash if the ConfigMap is unreadable
 
 See also:
 
-* [custom-configuration example using `--configmap`](https://github.com/jcmoraisjr/haproxy-ingress/blob/master/examples/custom-configuration/README.md)
+* [custom-configuration example using `--configmap`](https://github.com/n42-gateway/n42-gateway/blob/master/examples/custom-configuration/README.md)
 
 ---
 
-## default-backend-service
+### default-backend-service
 
 * `--default-backend-service`
 
@@ -199,7 +201,7 @@ hostname, or the requested path doesn't match any location within the desired ho
 
 ---
 
-## default-ssl-certificate
+### default-ssl-certificate
 
 * `--default-ssl-certificate`
 
@@ -212,7 +214,7 @@ A self-signed fake certificate is used if not declared, the secret or the file i
 
 ---
 
-## disable-api-warnings
+### disable-api-warnings
 
 * `--disable-api-warnings`
 
@@ -223,7 +225,7 @@ deprecation. The default behavior is to log all API server warnings.
 
 ---
 
-## disable-config-keywords
+### disable-config-keywords
 
 * `--disable-config-keywords`
 
@@ -237,7 +239,7 @@ The default value is an empty string, enabling the configuration and accepting a
 
 ---
 
-## disable-external-name
+### disable-external-name
 
 * `--disable-external-name`
 
@@ -247,7 +249,7 @@ Services of type ExternalName uses DNS lookup to define the target server IP lis
 
 ---
 
-## disable-pod-list
+### disable-pod-list
 
 * `--disable-pod-list`
 
@@ -257,7 +259,7 @@ Disables in memory pod list and also pod watch for changes. Pod list and watch i
 
 ---
 
-## election-id
+### election-id
 
 * `--election-id`
 
@@ -269,13 +271,13 @@ The ID to be used for electing ingress controller leader. A leader needs to be e
 
 Election ID configuration has no effect if none of Address status update, Embedded Acme signer, or Gateway API are enabled.
 
-Since v0.15 a `%s` placeholder is used to define where the IngressClass value should be added to the election ID. Up to v0.14 the IngressClass was concatenated in the end of the provided value to compose the real election ID value. Ingress class is added to the election ID name to avoid conflict when two or more HAProxy Ingress controllers are running in the same cluster.
+Since v0.15 a `%s` placeholder is used to define where the IngressClass value should be added to the election ID. Up to v0.14 the IngressClass was concatenated in the end of the provided value to compose the real election ID value. Ingress class is added to the election ID name to avoid conflict when two or more N42 Gateway controllers are running in the same cluster.
 
 Election ID defaults to `class-%s.haproxy-ingress.github.io` if not configured, which is rendered to `class-haproxy.haproxy-ingress.github.io` if the IngressClass is not changed from the default value.
 
 ---
 
-## enable-endpointslices-api
+### enable-endpointslices-api
 
 * `--enable-endpointslices-api`
 
@@ -283,11 +285,11 @@ Since v0.14, deprecated since v0.16
 
 Uses EndpointSlices API info, rather than Endpoints API, to fetch service endpoints info.
 
-Endpoints API is deprecated since Kubernetes 1.33, and HAProxy Ingress only supports EndpointSlices API since v0.16. This option is ignored if configured.
+Endpoints API is deprecated since Kubernetes 1.33, and N42 Gateway only supports EndpointSlices API since v0.16. This option is ignored if configured.
 
 ---
 
-## force-namespace-isolation
+### force-namespace-isolation
 
 * `--force-namespace-isolation`
 
@@ -307,7 +309,7 @@ See also:
 
 ---
 
-## haproxy-grace-period
+### haproxy-grace-period
 
 * `--haproxy-grace-period`
 
@@ -317,7 +319,7 @@ Defines the duration HAProxy should wait all requests to finish before terminate
 
 This option should be below the controller shutdown timeout, since it will terminate the controller process despite any other internal grace period.
 
-On [External HAProxy]({{% relref "../examples/external-haproxy" %}}), its container already uses SIGUSR1 as the stop signal, which makes HAProxy to wait for active connections to finish, just need to configure the container's grace period if need to change from its default of 30s.
+On [External HAProxy]({{% relref "/examples/external-haproxy" %}}), its container already uses SIGUSR1 as the stop signal, which makes HAProxy to wait for active connections to finish, just need to configure the container's grace period if need to change from its default of 30s.
 
 See also:
 
@@ -325,7 +327,7 @@ See also:
 
 ---
 
-## Ingress Class
+### Ingress Class
 
 More than one ingress controller is supported per Kubernetes cluster. These options allow to
 override the class of ingress resources that this instance of the controller should listen to.
@@ -338,10 +340,10 @@ older controller version.
 
 * `--ingress-class`: defines the value of `kubernetes.io/ingress.class` annotation this controller
 should listen to. The default value is `haproxy` if not declared.
-* `--controller-class`: by default, HAProxy Ingress will watch IngressClasses whose
+* `--controller-class`: by default, N42 Gateway will watch IngressClasses whose
 `spec.controller` name is `haproxy-ingress.github.io/controller`. All ingress resources that
 link to these IngressClasses will be added to the configuration. The `--controller-class`
-command-line option customizes the controller name, allowing to run more than one HAProxy Ingress
+command-line option customizes the controller name, allowing to run more than one N42 Gateway
 in the same cluster. Configuring `--controller-class=staging` would listen to IngressClasses whose
 controller name is `haproxy-ingress.github.io/controller/staging`.
 * `--full-controller-name`: Same as `--controller-class`, but defines the fully qualified controller
@@ -364,13 +366,13 @@ See also:
 
 ---
 
-## ip-mode
+### ip-mode
 
 * `--ip-mode`
 
 Since v0.17
 
-Defines the IP mode used on frontends (listening bind) if not configured in the frontend binding, and loopback addresses created by HAProxy Ingress (auth-proxy and empty slots). Defaults to `auto` if not configured.
+Defines the IP mode used on frontends (listening bind) if not configured in the frontend binding, and loopback addresses created by N42 Gateway (auth-proxy and empty slots). Defaults to `auto` if not configured.
 
 The following options are available:
 
@@ -387,7 +389,7 @@ See also:
 
 ---
 
-## kubeconfig
+### kubeconfig
 
 * `--kubeconfig`
 
@@ -398,20 +400,20 @@ is deployed outside of the Kubernetes cluster.
 
 ---
 
-## local-filesystem-prefix
+### local-filesystem-prefix
 
 * `--local-filesystem-prefix`
 
 Since v0.14
 
-Enables HAProxy Ingress to run in local mode. Define `--local-filesystem-prefix` with a temporary
-directory HAProxy Ingress should create and maintain all the configuration files. Useful for local
-deployment. Start HAProxy Ingress in the root directory of the repository when using
+Enables N42 Gateway to run in local mode. Define `--local-filesystem-prefix` with a temporary
+directory N42 Gateway should create and maintain all the configuration files. Useful for local
+deployment. Start N42 Gateway in the root directory of the repository when using
 `--local-filesystem-prefix`, or simply use via `make run`.
 
 ---
 
-## Logging
+### Logging
 
 Since v0.14
 
@@ -427,32 +429,32 @@ Logging configuration options.
 
 ---
 
-## master-socket
+### master-socket
 
 * `--master-socket`
 
 Since v0.12
 
-Configures HAProxy Ingress to use an external haproxy deployment in master-worker mode. This option
+Configures N42 Gateway to use an external haproxy deployment in master-worker mode. This option
 receives the unix socket of the master CLI. The default value is an empty string, which will
 instruct the controller to start and manage the embedded haproxy instead of an external instance.
 
 The following conditions should be satisfied in order to an external haproxy work properly:
 
-1. The following paths should be shared between HAProxy Ingress and the external haproxy: `/etc/haproxy`, `/var/lib/haproxy`, `/var/run/haproxy`. HAProxy Ingress must have write access to all of them, external haproxy should have write access to `/var/run/haproxy`. This can be made using a sidecar container and k8s' emptyDir, or a remote file system provided that it updates synchronously and supports unix sockets
+1. The following paths should be shared between N42 Gateway and the external haproxy: `/etc/haproxy`, `/var/lib/haproxy`, `/var/run/haproxy`. N42 Gateway must have write access to all of them, external haproxy should have write access to `/var/run/haproxy`. This can be made using a sidecar container and k8s' emptyDir, or a remote file system provided that it updates synchronously and supports unix sockets
 1. Start the external haproxy with:
   * `-S /var/run/haproxy/master.sock,mode,600`. `mode 600` isn't mandatory but recommended;
   * `-f /etc/haproxy`
-1. HAProxy Ingress image has a `--init` command-line option which creates an initial valid configuration file, this allows the external haproxy to bootstraps successfully. This option can be used as an init container.
+1. N42 Gateway image has a `--init` command-line option which creates an initial valid configuration file, this allows the external haproxy to bootstraps successfully. This option can be used as an init container.
 
 See also:
 
-* [example]({{% relref "../examples/external-haproxy" %}}) page.
+* [example]({{% relref "/examples/external-haproxy" %}}) page.
 * [External]({{% relref "keys#external" %}}) and [Master-worker]({{% relref "keys#master-worker" %}}) configuration keys
 
 ---
 
-## master-worker
+### master-worker
 
 * `--master-worker`
 
@@ -461,13 +463,13 @@ Since v0.14
 Defines if haproxy should be configured in master-worker mode. If `false`, one single process
 is forked in the background. If `true`, a master process is started in the foreground and can
 be used to manage current and old worker processes. The default value is `false` in v0.14, which
-preserves historical behavior of HAProxy Ingress. v0.15 and newer defaults to `true` if not
+preserves historical behavior of N42 Gateway. v0.15 and newer defaults to `true` if not
 declared. External HAProxy deployment needs master-worker mode and will enforce
 `--master-worker` as `true` if configured.
 
 ---
 
-## max-old-config-files
+### max-old-config-files
 
 * `--max-old-config-files`
 
@@ -478,7 +480,7 @@ remove old configuration files. If `0`, the default value, a single `haproxy.cfg
 
 ---
 
-## publish-address
+### publish-address
 
 * `--publish-address`
 
@@ -494,7 +496,7 @@ See also:
 
 ---
 
-## publish-service
+### publish-service
 
 * `--publish-service`
 
@@ -519,7 +521,7 @@ See also:
 
 ---
 
-## rate-limit-update
+### rate-limit-update
 
 * `--rate-limit-update`
 
@@ -540,7 +542,7 @@ See also [`--reload-interval`](#reload-interval).
 
 ---
 
-## reload-interval
+### reload-interval
 
 * `--reload-interval`
 
@@ -559,15 +561,15 @@ one will delay up to the configured duration to be reflected by HAProxy.
 
 ---
 
-## reload-retry
+### reload-retry
 
 * `--reload-retry`
 
-How long HAProxy Ingress should wait before trying to reload HAProxy if an error happens. Defaults to `30s`.
+How long N42 Gateway should wait before trying to reload HAProxy if an error happens. Defaults to `30s`.
 
 ---
 
-## reload-strategy
+### reload-strategy
 
 * `--reload-strategy`
 
@@ -581,7 +583,7 @@ describes how it works.
 
 ---
 
-## report-node-internal-ip-address
+### report-node-internal-ip-address
 
 * `--report-node-internal-ip-address`
 
@@ -593,7 +595,7 @@ See also:
 
 ---
 
-## shutdown-timeout
+### shutdown-timeout
 
 * `--shutdown-timeout`
 
@@ -608,7 +610,7 @@ See also:
 
 ---
 
-## sort-backends
+### sort-backends
 
 * `--sort-backends`
 
@@ -616,7 +618,7 @@ Defines if backend's endpoints should be sorted by name. Since v0.8 the endpoint
 same order found in the Kubernetes' endpoint objects if `--sort-backends` is missing. This option
 has less precedence than `--sort-endpoints-by` if both are declared.
 
-In v0.7 and older version, if `--sort-backends` is missing, HAProxy Ingress randomly shuffle endpoints
+In v0.7 and older version, if `--sort-backends` is missing, N42 Gateway randomly shuffle endpoints
 on each reload in order to avoid requesting always the same backends just after haproxy reloads.
 
 Sorting backends by name has a real effect only if using a distinct [backend-server-naming]({{% relref "keys#backend-server-naming" %}})
@@ -629,7 +631,7 @@ See also:
 
 ---
 
-## sort-endpoints-by
+### sort-endpoints-by
 
 * `--sort-endpoints-by`
 
@@ -644,30 +646,30 @@ Defines in which order the endpoints of a backend should be sorted.
 
 ---
 
-## Stats
+### Stats
 
 Configures an endpoint with statistics, debugging and health checks. The following URIs are provided:
 
-* `/healthz`: a healthz URI for the haproxy-ingress
-* `/readyz`: a readiness URI for the haproxy-ingress
+* `/healthz`: a healthz URI for the N42 Gateway
+* `/readyz`: a readiness URI for the N42 Gateway
 * `/metrics`: Prometheus compatible metrics exporter
 * `/acme/check` (`POST`): starts check for missing, expiring or outdated certificates controlled by acme client. Should be issued in the leader.
 * `/debug/pprof`: profiling tools
 * `/build`: build information - controller name, version, git commit hash and repository
-* `/stop`: stops haproxy-ingress controller
+* `/stop`: stops N42 Gateway controller
 
 Options:
-* `--health-check-path`: Defines the URL to be used as a health check for haproxy ingress. Defaults to `/healthz`.
-* `--health-addr`: Defines the address haproxy-ingress should listen to. Defaults to `:10254`.
-* `--healthz-port`: (deprecated since v0.15) Defines the port number haproxy-ingress should listen to. Use `--healthz-addr` instead. Defaults to `10254`.
+* `--health-check-path`: Defines the URL to be used as a health check for N42 Gateway. Defaults to `/healthz`.
+* `--health-addr`: Defines the address N42 Gateway should listen to. Defaults to `:10254`.
+* `--healthz-port`: (deprecated since v0.15) Defines the port number N42 Gateway should listen to. Use `--healthz-addr` instead. Defaults to `10254`.
 * `--profiling`: Configures if the profiling URI should be enabled. Defaults to `true`.
-* `--ready-check-path`: Defines the URL to be used as a readiness check for haproxy ingress. Defaults to `/readyz`.
+* `--ready-check-path`: Defines the URL to be used as a readiness check for N42 Gateway. Defaults to `/readyz`.
 * `--stats-collect-processing-period`: Defines the interval between two consecutive readings of haproxy's `Idle_pct`, used to generate `haproxy_processing_seconds_total` metric. haproxy updates Idle_pct every `500ms`, which makes that the best configuration value, and it's also the default if not configured. Values greater than `500ms` will produce a less accurate collect. Change to 0 (zero) to disable this metric.
 * `--stop-handler`: Allows to stop the controller via a POST request to `<host>:<healthzport>/stop` endpoint. Default value is `false`.
 
 ---
 
-## sync-period
+### sync-period
 
 * `--sync-period`
 
@@ -676,7 +678,7 @@ minutes.
 
 ---
 
-## tcp-services-configmap
+### tcp-services-configmap
 
 * `--tcp-services-configmap`
 
@@ -684,11 +686,11 @@ Configure `--tcp-services-configmap` argument with `namespace/configmapname` res
 services and ports that HAProxy should listen to. Use the HAProxy's port number as the key of the
 ConfigMap.
 
-{{< alert title="Note" >}}
-Starting on v0.13, `--tcp-services-configmap` is deprecated. Use [`tcp-service-port`]({{% relref "keys#tcp-services" %}}) configuration key instead.
-
-The documentation refers to "ConfigMap based TCP" when taking about this configuration options, and it refers to "TCP Service" when talking about to the new, annotation based TCP configuration.
-{{< /alert >}}
+> [!INFO] Note
+>
+> Starting on v0.13, `--tcp-services-configmap` is deprecated. Use [`tcp-service-port`]({{% relref "keys#tcp-services" %}}) configuration key instead.
+>
+> The documentation refers to "ConfigMap based TCP" when taking about this configuration options, and it refers to "TCP Service" when talking about to the new, annotation based TCP configuration.
 
 The value of the ConfigMap entry is a colon separated list of the following arguments:
 
@@ -733,15 +735,15 @@ See also:
 
 ---
 
-## Timeout
+### Timeout
 
 Timeout configuration.
 
-* `--connection-timeout`: (since v0.14.11) Defines the maximum amount of time HAProxy Ingress should wait for HAProxy responses when connecting to its master or admin sockets. This configuration is specially useful on HAProxy v2.7+ and large configurations, since its `reload` command became synchronous and should take some time to finish. Defaults to `30s` if not configured.
+* `--connection-timeout`: (since v0.14.11) Defines the maximum amount of time N42 Gateway should wait for HAProxy responses when connecting to its master or admin sockets. This configuration is specially useful on HAProxy v2.7+ and large configurations, since its `reload` command became synchronous and should take some time to finish. Defaults to `30s` if not configured.
 
 ---
 
-## track-old-instances
+### track-old-instances
 
 * `--track-old-instances`
 
@@ -761,7 +763,7 @@ See also:
 
 ---
 
-## update-status
+### update-status
 
 * `--update-status`
 
@@ -789,7 +791,7 @@ See also:
 
 ---
 
-## update-status-on-shutdown
+### update-status-on-shutdown
 
 * `--update-status-on-shutdown`
 
@@ -803,7 +805,7 @@ See also:
 
 ---
 
-## validate-config
+### validate-config
 
 * `--validate-config`
 
@@ -811,12 +813,12 @@ Determines whether the resulting configuration files should be validated when a 
 applied. Default value is `false`, which means the validation will only happen when HAProxy needs to
 be reloaded.
 
-If validation fails, HAProxy Ingress will log the error and set the metric
+If validation fails, N42 Gateway will log the error and set the metric
 `haproxyingress_update_success` to zero, indicating failure.
 
 ---
 
-## verify-hostname
+### verify-hostname
 
 * `--verify-hostname`
 
@@ -830,7 +832,7 @@ the certificate declared in the `secretName` ignoring if the certificate is or i
 
 ---
 
-## version
+### version
 
 * `--version`
 
@@ -838,7 +840,7 @@ Show release information about the ingress controller.
 
 ---
 
-## wait-before-shutdown
+### wait-before-shutdown
 
 * `--wait-before-shutdown`
 
@@ -854,7 +856,7 @@ See also:
 
 ---
 
-## wait-before-update
+### wait-before-update
 
 * `--wait-before-update`
 
@@ -866,7 +868,7 @@ changes in one single shot. The default value is `200ms`.
 
 ---
 
-## watch-gateway
+### watch-gateway
 
 * `--watch-gateway`
 
@@ -882,7 +884,7 @@ When enabled, `--watch-gateway` enforces a leader election. A leader must be ele
 
 ---
 
-## watch-ingress
+### watch-ingress
 
 * `--watch-ingress`
 
@@ -892,7 +894,7 @@ Enables Ingress API watch and parse. This option is enabled by default. Add `--w
 
 ---
 
-## watch-namespace
+### watch-namespace
 
 * `--watch-namespace`
 

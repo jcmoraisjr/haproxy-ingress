@@ -35,20 +35,21 @@ Docsy has a shortcut for you:
 
 If you want to run your own local Hugo server to preview your changes as you work:
 
-1. Install [Hugo](https://gohugo.io/getting-started/installing) and any other tools you need. You'll need at least **Hugo version 0.110.0** (we recommend using the most recent available version), and it must be the **extended** version, which supports SCSS.
-1. Fork the [HAProxy Ingress](https://github.com/jcmoraisjr/haproxy-ingress) repo into your own project, then create a local copy using `git clone`.
+1. Install [Hugo](https://gohugo.io/getting-started/installing) and any other tools you need. You'll need at least **Hugo version 0.161.0** (we recommend using the most recent available version), and it must be the **extended** version, which supports SCSS.
+1. Fork the [N42 Gateway](https://github.com/n42-gateway/n42-gateway) repo into your own project, then create a local copy using `git clone`.
 
        $ git clone --depth 1\
-         https://github.com/jcmoraisjr/haproxy-ingress.git
+         https://github.com/n42-gateway/n42-gateway.git
 
 1. Run `hugo server` from inside the `/docs` directory. By default your site will be available at http://localhost:1313/. Now that you're serving your site locally, Hugo will watch for changes to the content and automatically refresh your site.
-    - On macOS, if you get a `pipe failed` error, you may need to add the `--watch=false` flag.
+    > On macOS, if you get a `pipe failed` error, you may need to add the `--watch=false` flag.
+
 1. Continue with the usual GitHub workflow to edit files, commit them, push the changes up to your fork, and create a pull request.
 
 ## Creating an issue
 
 If you've found a problem in the docs, but you're not sure how to fix it yourself, please create
-an issue in the [HAProxy Ingress issue tracker](https://github.com/jcmoraisjr/haproxy-ingress/issues).
+an issue in the [N42 Gateway issue tracker](https://github.com/n42-gateway/n42-gateway/issues).
 You can also create an issue about a specific page by clicking the **Create doc issue** link
 in the top right hand corner of the page.
 

@@ -7,7 +7,7 @@ description: >
 ---
 
 Configuration keys are entry point configurations that allow users and admins to
-dynamically fine-tune HAProxy status. HAProxy Ingress reads configuration keys
+dynamically fine-tune HAProxy status. N42 Gateway reads configuration keys
 from Kubernetes resources, and this can be done in a couple of ways:
 
 * Globally, from a ConfigMap
@@ -21,18 +21,18 @@ configurations, that can be overridden by Ingress resource configurations and so
 This hierarchy creates a flexible model, where commonly used configurations can be
 made in a higher level and overridden by local changes.
 
-The following sections describe in a few more details how HAProxy Ingress classifies
+The following sections describe in a few more details how N42 Gateway classifies
 an Ingress to be part of the final configuration, and how it reads the configuration
 from Kubernetes resources.
 
 ## Class matter
 
-HAProxy Ingress by default does not listen to Ingress resources, until one or more of
+N42 Gateway by default does not listen to Ingress resources, until one or more of
 the following conditions are met:
 
 * Ingress resources have the annotation `kubernetes.io/ingress.class` with the value `haproxy`
 * Ingress resources have its `ingressClassName` field assigning an IngressClass resource whose `controller` name is `haproxy-ingress.github.io/controller`
-* HAProxy Ingress was started with `--watch-ingress-without-class` command-line option
+* N42 Gateway was started with `--watch-ingress-without-class` command-line option
 
 See [Ingress Class]({{% relref "command-line/#ingress-class" %}}) command-line doc for
 customization options.
@@ -41,25 +41,25 @@ The first two options give more control on which Ingress resources should be par
 final configuration. Class annotation and the IngressClass name can be changed on a running
 controller, the configuration will be adjusted on the fly to reflect the new status. If
 both options are configured in an Ingress resource, and they conflict - i.e. one of them
-says the controller belongs to HAProxy Ingress and the other says that it does not belong -
+says the controller belongs to N42 Gateway and the other says that it does not belong -
 the annotation value wins and a warning is logged.
 
 Adding a class annotation or defining an IngressClass name means "classify" an Ingress
-resource. The third and latest option asks HAProxy Ingress to also add "unclassified"
+resource. The third and latest option asks N42 Gateway to also add "unclassified"
 Ingress to the final configuration - i.e. add Ingress resources that does not have the
 `kubernetes.io/ingress.class` annotation and also does not have the `ingressClassName`
-field. Note that this is a new behavior since v0.12. Up to v0.11 HAProxy Ingress listen
+field. Note that this is a new behavior since v0.12. Up to v0.11 N42 Gateway listen
 to "unclassified" Ingress by default.
 
 ## Strategies
 
-HAProxy Ingress reads configuration on three distinct ways:
+N42 Gateway reads configuration on three distinct ways:
 
 * `ConfigMap` key/value data. ConfigMaps are assigned either via `--configmap` command-line option (used by Global options), or via parameters field of an `IngressClass`
 * Annotations from classified `Ingress` resources and also from `Services` that these Ingress are linking to
 * Spec configurations from classified `Ingress` resources
 
-HAProxy Ingress follows [Ingress v1 spec](https://v1-18.docs.kubernetes.io/docs/concepts/services-networking/ingress/),
+N42 Gateway follows [Ingress v1 spec](https://v1-18.docs.kubernetes.io/docs/concepts/services-networking/ingress/),
 so any Ingress spec configuration should work as stated by the Kubernetes documentation.
 
 Annotations and ConfigMap customizations extend the Ingress spec via the configuration
@@ -76,7 +76,7 @@ ConfigMap key/value options are read in the following conditions:
 
 A configuration key is used verbatim as the ConfigMap key name, without any prefix.
 The ConfigMap spec expects a string as the key value, so declare numbers and booleans
-as strings, HAProxy Ingress will convert them when needed.
+as strings, N42 Gateway will convert them when needed.
 
 ```yaml
 apiVersion: v1
@@ -102,7 +102,7 @@ The default prefix is `haproxy-ingress.github.io`, and `ingress.kubernetes.io` i
 supported for backward compatibility. Change the prefix with the
 [`--annotations-prefix`]({{% relref "command-line#annotations-prefix" %}})
 command-line option. The annotation value spec expects a string as the key value, so
-declare numbers and booleans as strings, HAProxy Ingress will convert them when needed.
+declare numbers and booleans as strings, N42 Gateway will convert them when needed.
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -126,10 +126,7 @@ resource links to an IngressClass that configures its `parameters` field.
 The IngressClass' `parameters` field currently only accepts ConfigMap resources, and
 the ConfigMap must be declared in the same namespace of the controller.
 
-{{< alert title="Note" >}}
-Even though a ConfigMap is used, configuration keys of the `Global` scope cannot be
-used and will be ignored.
-{{< /alert >}}
+> [!NB] Even though a ConfigMap is used, configuration keys of the `Global` scope cannot be used and will be ignored.
 
 The following resources create the same final configuration of the Annotation
 section [above](#annotation), with the benefit of allowing the reuse of the
@@ -224,18 +221,18 @@ spec:
               number: 8080
 ```
 
-HAProxy Ingress will merge all the resources, so there is no difference if the
+N42 Gateway will merge all the resources, so there is no difference if the
 configuration is in the same or in distinct Ingress. Distinct Ingress however
 might lead to conflicting configuration, more about conflict in the
 [scope](#scope) section below.
 
 There is no hard limit to the number of Ingresses or Services - clusters with
 tens of thousands of Ingress and Service resources report to work smoothly and
-fast with HAProxy Ingress.
+fast with N42 Gateway.
 
 ## Scope
 
-HAProxy Ingress configuration keys must be in one of six distinct scopes: `Global`, `Frontend`, `Host`, `Backend`, `Path`, `TCP`. A scope defines where a configuration key value is applied in the HAProxy configuration, and they are described in the sections below.
+N42 Gateway configuration keys must be in one of six distinct scopes: `Global`, `Frontend`, `Host`, `Backend`, `Path`, `TCP`. A scope defines where a configuration key value is applied in the HAProxy configuration, and they are described in the sections below.
 
 Configuration keys declared in `Ingress` resources might conflict in the case the same `Frontend` ports, `Host` hostname, `Backend` service, or the `TCP` port number is used on distinct ingress resources, and those ingress resources configure the same key with distinct values. In the case this happens, a warning will be logged and the used value will be of the Ingress resource that was created first.
 
@@ -255,7 +252,7 @@ When frontend scoped keys are used as an annotation, they should always be confi
 
 ### Host
 
-Configuration keys from the host scope are applied per hostname, which is more a Kubernetes API and HAProxy Ingress concept than a HAProxy one. Distinct hostnames can receive distinct values from keys of this scope.
+Configuration keys from the host scope are applied per hostname, which is more a Kubernetes API and N42 Gateway concept than a HAProxy one. Distinct hostnames can receive distinct values from keys of this scope.
 
 Host scoped keys can be declared in global or IngressClass related ConfigMaps as default values, or in any Ingress resource for a more granular configuration. They can conflict since they can be configured via Ingress resource, see [scope](#scope).
 
@@ -267,9 +264,9 @@ Backend scoped keys can be declared in global or IngressClass related ConfigMaps
 
 ### Path
 
-Configuration keys from this scope are applied per a combination of the hostname and the HTTP path. Just like the `Host` scope, it is more a Kubernetes API and HAProxy Ingress concept than a HAProxy one. Distinct combinations of hostname and path can receive distinct values from keys of this scope.
+Configuration keys from this scope are applied per a combination of the hostname and the HTTP path. Just like the `Host` scope, it is more a Kubernetes API and N42 Gateway concept than a HAProxy one. Distinct combinations of hostname and path can receive distinct values from keys of this scope.
 
-Path scoped keys can be declared in global or IngressClass related ConfigMaps as default values, or in any Ingress or Service resource for a more granular configuration. They can only conflict in the case the same key is configured both in an Ingress and the Service it points to. They will never conflict if configured exclusively via Ingress, since the same path, with the same match type, under the same hostname cannot be configured more than once. If this happens, HAProxy Ingress will reject the path declaration instead of conflict the configuration key value.
+Path scoped keys can be declared in global or IngressClass related ConfigMaps as default values, or in any Ingress or Service resource for a more granular configuration. They can only conflict in the case the same key is configured both in an Ingress and the Service it points to. They will never conflict if configured exclusively via Ingress, since the same path, with the same match type, under the same hostname cannot be configured more than once. If this happens, N42 Gateway will reject the path declaration instead of conflict the configuration key value.
 
 ### TCP
 
@@ -553,7 +550,7 @@ Supported acme configuration keys:
 * `acme-preferred-chain`: optional, defines the Issuer's CN (Common Name) of the topmost certificate in the chain, if the acme server offers multiple certificate chains. The default certificate chain will be used if empty or no match is found. Note that changing this option will not force a new certificate to be issued if a valid one is already in place and actual and preferred chains differ. A new certificate can be emitted by changing the secret name in the ingress resource, or removing the secret being referenced.
 * `acme-shared`: defines if another certificate signer is running in the cluster. If `false`, the default value, any request to `/.well-known/acme-challenge/` is sent to the local acme server despite any ingress object configuration. Otherwise, if `true`, a configured ingress object would take precedence.
 * `acme-terms-agreed`: mandatory, it should be defined as `true`; otherwise, certificates won't be issued.
-* `cert-signer`: defines the certificate signer that should be used to authorize and sign new certificates. The only supported value is `"acme"`. Add this config as an annotation in the ingress object that should have its certificate managed by haproxy-ingress and signed by the configured acme environment. The annotation `kubernetes.io/tls-acme: "true"` is also supported if the command-line option `--acme-track-tls-annotation` is used.
+* `cert-signer`: defines the certificate signer that should be used to authorize and sign new certificates. The only supported value is `"acme"`. Add this config as an annotation in the ingress object that should have its certificate managed by N42 Gateway and signed by the configured acme environment. The annotation `kubernetes.io/tls-acme: "true"` is also supported if the command-line option `--acme-track-tls-annotation` is used.
 
 **Minimum setup**
 
@@ -567,22 +564,17 @@ The following configuration keys are mandatory: `acme-emails`, `acme-endpoint`,
 A cluster-wide permission to `create` and `update` the `secrets` resources should
 also be made.
 
-{{< alert title="Note" >}}
-haproxy-ingress need cluster-wide permissions `create` and `update` on resource
-`secrets` to store the client private key (new account) and the generated certificate
-and its private key. The default clusterrole configuration doesn't provide these
-permissions.
-{{< /alert >}}
+> [!NB] N42 Gateway need cluster-wide permissions `create` and `update` on resource `secrets` to store the client private key (new account) and the generated certificate and its private key. The default clusterrole configuration doesn't provide these permissions.
 
 **How it works**
 
-All haproxy-ingress instances should declare `--acme-server`
+All N42 Gateway instances should declare `--acme-server`
 [command-line option]({{% relref "command-line/#acme" %}}), which will start a local
 server to answer acme challenges, a work queue to enqueue the domain authorization
 and certificate signing, and will also start a leader election to define which
-haproxy-ingress instance should perform authorizations and certificate signing.
+N42 Gateway instance should perform authorizations and certificate signing.
 
-The haproxy-ingress leader tracks ingress objects that declares the annotation
+The N42 Gateway leader tracks ingress objects that declares the annotation
 `haproxy-ingress.github.io/cert-signer` with value `acme` and a configured secret name for
 TLS certificate. The annotation `kubernetes.io/tls-acme` with value `"true"` will also
 be used if the command-line option `--acme-track-tls-annotation` is declared. The
@@ -666,10 +658,10 @@ check that is run independently of a regular health check and can be used to
 control the reported status of a server as well as the weight to be used for
 load balancing.
 
-{{< alert title="Note" >}}
-* `agent-check-port` must be provided for any of the agent check options to be applied
-* define [`initial-weight`](#initial-weight) if using `agent-check` to change the server weight
-{{< /alert >}}
+> [!INFO] Note
+>
+> * `agent-check-port` must be provided for any of the agent check options to be applied
+> * define [`initial-weight`](#initial-weight) if using `agent-check` to change the server weight
 
 * `agent-check-port`: Defines the port on which the agent is listening. This
 option is required in order to use an agent check.
@@ -734,10 +726,10 @@ still want to control access to separate paths from ingress configuration.
 Allowlist and denylist can be used together. The request will be denied if the
 configurations overlap and a source IP matches both the allowlist and denylist.
 
-{{< alert title="Warning" color="warning" >}}
-Setting a `allowlist-source-header` comes with a security risk. You must ensure that
-the selected header can be trusted!
-{{< /alert >}}
+> [!WARNING]
+>
+> Setting a `allowlist-source-header` comes with a security risk. You must ensure that
+> the selected header can be trusted!
 
 See also:
 
@@ -780,15 +772,13 @@ The secret referenced by `auth-secret` should have a key named `auth` with users
 * `<user>::<password>`: User and password are separated by 2 (two) colons. The password will be copied verbatim, stored in the configuration file in an insecure way.
 * `<user>:<password-hash>`: User and password are separated by 1 (one) colon. This syntax needs a password hash that can be generated with `mkpasswd`.
 
-{{< alert title="Note" >}}
-Up to v0.12 the configuration key `auth-type` was mandatory, it enabled the only supported authentication type `basic`. Since v0.13 this configuration is deprecated and both Basic and External authentication types can be enabled at the same time: configure `auth-secret` to enable basic authentication, and configure `auth-url` to enable external authentication.
-{{< /alert >}}
+> [!NB] Up to v0.12 the configuration key `auth-type` was mandatory, it enabled the only supported authentication type `basic`. Since v0.13 this configuration is deprecated and both Basic and External authentication types can be enabled at the same time: configure `auth-secret` to enable basic authentication, and configure `auth-url` to enable external authentication.
 
 See also:
 
 * [--allow-cross-namespace]({{% relref "command-line/#allow-cross-namespace" %}}) command-line option
 * [Auth TLS](#auth-tls) configuration keys
-* [Auth Basic example](https://github.com/jcmoraisjr/haproxy-ingress/tree/master/examples/auth/basic) page
+* [Auth Basic example](https://github.com/n42-gateway/n42-gateway/tree/master/examples/auth/basic) page
 
 ---
 
@@ -829,9 +819,7 @@ Configures External Authentication options.
 
 `svc` protocol allows to use a Kubernetes service declared in the same namespace of the ingress or the service being annotated. Services on other namespaces can also be used in the form `svc://namespace/servicename:port/path` if global config [`cross-namespace-services`](#cross-namespace) was configured as `allow`. The service can be of any type and a port must always be declared - both in the `auth-url` configuration and in the service resource. Using `svc` protocol allows to configure a secure connection, see [secure](#secure-backend) configuration keys and annotate them in the target service.
 
-{{< alert title="Note" >}}
-`http` or `https` protos should only use domain names with stable IP addresses. They are not recommended for external services that scale in/out, or frequently changes their IP, and consequently updates the DNS records. HAProxy Ingress will only follow changes in the DNS records on full reconciliations or when the configured ingress or service changes, which should cause outages until a new reconciliation happens.
-{{< /alert >}}
+> [!NB] `http` or `https` protos should only use domain names with stable IP addresses. They are not recommended for external services that scale in/out, or frequently changes their IP, and consequently updates the DNS records. N42 Gateway will only follow changes in the DNS records on full reconciliations or when the configured ingress or service changes, which should cause outages until a new reconciliation happens.
 
 Configuration examples:
 
@@ -859,11 +847,9 @@ Configuration examples:
 
 **Dependencies and port range**
 
-HAProxy Ingress uses [`auth-request.lua`](https://github.com/TimWolla/haproxy-auth-request) script, which in turn uses HAProxy Technologies' [`haproxy-lua-http`](https://github.com/haproxytech/haproxy-lua-http/) to perform the authentication request and wait for the response. The request is managed by an internal haproxy frontend/backend pair, which can be fine tuned with `auth-proxy`. The default value is `_front__auth:14415-14499`: `_front__auth` is the name of the frontend helper and `14415-14499` is an [unassigned TCP port range](https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.txt) that `haproxy-lua-http` uses to connect and send the authentication request. Requests to this proxy can be added to the log, see [`auth-log-format`](#log-format") configuration key.
+N42 Gateway uses [`auth-request.lua`](https://github.com/TimWolla/haproxy-auth-request) script, which in turn uses HAProxy Technologies' [`haproxy-lua-http`](https://github.com/haproxytech/haproxy-lua-http/) to perform the authentication request and wait for the response. The request is managed by an internal haproxy frontend/backend pair, which can be fine tuned with `auth-proxy`. The default value is `_front__auth:14415-14499`: `_front__auth` is the name of the frontend helper and `14415-14499` is an [unassigned TCP port range](https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.txt) that `haproxy-lua-http` uses to connect and send the authentication request. Requests to this proxy can be added to the log, see [`auth-log-format`](#log-format") configuration key.
 
-{{< alert title="Note" >}}
-Auth External needs [`external-has-lua`](#external) enabled if running on an external haproxy deployment. The external haproxy needs Lua json module installed (Alpine's `lua-json4` package)
-{{< /alert >}}
+> [!NB] Auth External needs [`external-has-lua`](#external) enabled if running on an external haproxy deployment. The external haproxy needs Lua json module installed (Alpine's `lua-json4` package)
 
 See also:
 
@@ -917,7 +903,7 @@ The following keys are supported:
 
 See also:
 
-* [example](https://github.com/jcmoraisjr/haproxy-ingress/tree/master/examples/auth/client-certs) page.
+* [example](https://github.com/n42-gateway/n42-gateway/tree/master/examples/auth/client-certs) page.
 
 ---
 
@@ -960,11 +946,11 @@ Configures how to name backend servers.
 * `pod`: Uses the k8s pod name as the backend server name. This option doesn't work on backends whose [`service-upstream`](#service-upstream) is `true`, falling back to `sequence`.
 * `ip`: Uses target's `<ip>:<port>` as the server name.
 
-{{< alert title="Note" >}}
-HAProxy Ingress won't refuse to change the default naming if [dynamic scaling](#dynamic-scaling) is `Slots`, this would however lead to undesired behaviour: empty slots would still be named as sequences, old-named backend servers will dynamically receive new workloads with new pod names or IP numbers which do not relate with the name anymore, making the naming useless, if not wrong. Dynamic scaling as `Add` does not have this limitation.
-
-If you have [cookie affinity](#affinity) enabled, dynamic scaling as `Slots` can cause the cookie values to get out of sync with the servers. This can be avoided by using `session-cookie-preserve` with a value of `true`.
-{{< /alert >}}
+> [!INFO] Note
+>
+> N42 Gateway won't refuse to change the default naming if [dynamic scaling](#dynamic-scaling) is `Slots`, this would however lead to undesired behaviour: empty slots would still be named as sequences, old-named backend servers will dynamically receive new workloads with new pod names or IP numbers which do not relate with the name anymore, making the naming useless, if not wrong. Dynamic scaling as `Add` does not have this limitation.
+>
+> If you have [cookie affinity](#affinity) enabled, dynamic scaling as `Slots` can cause the cookie values to get out of sync with the servers. This can be avoided by using `session-cookie-preserve` with a value of `true`.
 
 ---
 
@@ -1009,7 +995,7 @@ See also:
 Configures listening IP and port for HTTP(S) incoming requests. If empty, the
 configuration provided in [Bind IP addr](#bind-ip-addr),
 [Bind port](#bind-port) and [HTTP Passthrough](#http-passthrough) keys are used.
-If none of the options are declared, HAProxy Ingress configure the listening bind
+If none of the options are declared, N42 Gateway configure the listening bind
 based on the IP stack defined in [`--ip-mode`]({{% relref "command-line#ip-mode" %}})
 command-line option.
 
@@ -1019,9 +1005,9 @@ bind keyword. See HAProxy
 
 On v0.17 these configuration keys changed from `Global` to `Frontend` scope, which means they can be used now as Ingress annotations, provided that the ingress resource references a custom frontend. See [HTTP Frontends](#http-frontends) on how to reference a custom frontend using annotation. Listening bind keys need also `allow-local-bind` as `True` in order to allow configuration from ingress annotations. Note that allowing listening bind via annotation can lead to overlap if the user configures, in the ingress resource level, the same listening port used by another frontend.
 
-{{< alert title="Warning" color="warning" >}}
-`allow-local-bind` allows to customize the bind declaration using ingress annotations. Note that HAProxy Ingress applies the bind configuration verbatim, without validating if it conflicts with other frontends. If this configuration is allowed, an user having write access to ingress resources can create a listening bind configuration that conflicts with the global ones.
-{{< /alert >}}
+> [!WARNING]
+>
+> `allow-local-bind` allows to customize the bind declaration using ingress annotations. Note that N42 Gateway applies the bind configuration verbatim, without validating if it conflicts with other frontends. If this configuration is allowed, an user having write access to ingress resources can create a listening bind configuration that conflicts with the global ones.
 
 Configuration examples:
 
@@ -1029,13 +1015,11 @@ Configuration examples:
 * `bind-http: ":80,:::80"` and `bind-https:  ":443,:::443"`: Listen all IPv4 and IPv6 addresses
 * `bind-https: ":443,:8443"`: accept https connections on `443` and also `8443` port numbers
 
-{{< alert title="Note" >}}
-Since v0.17, `bind-http-passthrough` and `bind-http` cannot share neither the same frontend nor the same TCP port anymore.
-{{< /alert >}}
+> [!NB] Since v0.17, `bind-http-passthrough` and `bind-http` cannot share neither the same frontend nor the same TCP port anymore.
 
-{{< alert title="Warning" color="warning" >}}
-Special care should be taken on port number overlap on global, and annotation based configuration if allowed. Neither haproxy itself nor HAProxy Ingress will warn if the same port number is used on more than one configuration key. Moreover, although it is possible to configure a binding address completely unrelated with the configured `http-port`, `https-port` or `http-frontends`, the suggestion is that configurations match somehow.
-{{< /alert >}}
+> [!WARNING]
+>
+> Special care should be taken on port number overlap on global, and annotation based configuration if allowed. Neither haproxy itself nor N42 Gateway will warn if the same port number is used on more than one configuration key. Moreover, although it is possible to configure a binding address completely unrelated with the configured `http-port`, `https-port` or `http-frontends`, the suggestion is that configurations match somehow.
 
 See also:
 
@@ -1096,17 +1080,7 @@ Binding port configuration.
 * `healthz-port`: Define the port number HAProxy should listen to in order to answer for health checking requests. Use `/healthz` as the request path.
 * `prometheus-port`: Define the port number of the haproxy's internal Prometheus exporter. Defaults to not create the listener. A listener without being scraped does not use system resources, except for the listening port. The internal exporter supports scope filter as a query string, eg `/metrics?scope=frontend&scope=backend` will only export frontends and backends. See the full description in the [HAProxy's Prometheus exporter doc](https://git.haproxy.org/?p=haproxy-2.0.git;a=blob;f=contrib/prometheus-exporter/README;hb=HEAD).
 
-{{< alert title="Note" >}}
-The internal Prometheus exporter runs concurrently with request processing, and it is
-about 5x slower and 20x more verbose than the CSV exporter. See the haproxy's exporter
-[doc](https://github.com/haproxy/haproxy/blob/v2.0.0/contrib/prometheus-exporter/README#L44).
-Consider use Prometheus' [haproxy_exporter](https://github.com/prometheus/haproxy_exporter)
-on very large clusters - Prometheus' implementation reads the CSV from the stats page and
-converts to the Prometheus syntax outside the haproxy process. On the other side the internal
-exporter supports scope filtering, which should make at least the processing time between csv
-and prometheus exporter very close if servers are filtered out. Make your own tests before
-choosing between one or the other.
-{{< /alert >}}
+> [!NB] The internal Prometheus exporter runs concurrently with request processing, and it is about 5x slower and 20x more verbose than the CSV exporter. See the haproxy's exporter [doc](https://github.com/haproxy/haproxy/blob/v2.0.0/contrib/prometheus-exporter/README#L44). Consider use Prometheus' [haproxy_exporter](https://github.com/prometheus/haproxy_exporter) on very large clusters - Prometheus' implementation reads the CSV from the stats page and converts to the Prometheus syntax outside the haproxy process. On the other side the internal exporter supports scope filtering, which should make at least the processing time between csv and prometheus exporter very close if servers are filtered out. Make your own tests before choosing between one or the other.
 
 See also:
 
@@ -1203,7 +1177,7 @@ uses the chosen load balance algorithm.
 
 See also:
 
-* [example]({{% relref "../examples/blue-green" %}}) page.
+* [example]({{% relref "/examples/blue-green" %}}) page.
 * [disable-pod-list]({{% relref "command-line/#disable-pod-list" %}}) command-line option doc.
 * https://docs.haproxy.org/3.0/configuration.html#5.2-weight (`weight` based balance)
 * https://docs.haproxy.org/3.0/configuration.html#4-use-server (`use-server` based selector)
@@ -1413,7 +1387,7 @@ See also:
 
 Add CORS headers on OPTIONS http command (preflight) and responses.
 
-Since v0.17, HAProxy Ingress does not include CORS headers in case the request does not provide the `Origin` header having an allowed URL.
+Since v0.17, N42 Gateway does not include CORS headers in case the request does not provide the `Origin` header having an allowed URL.
 
 * `cors-enable`: Enable CORS if defined as `true`.
 * `cors-allow-origin`: Optional, defines a comma-separated list of `Origin` URLs that may access the resource. The expected syntax is `proto://subdomain.tld` followed by an optional `:portnumber`.
@@ -1467,9 +1441,7 @@ Defines if resources declared on a namespace can read resources declared on anot
 * `cross-namespace-secrets-passwd`: Allows or denies cross namespace reading of password files, used by [`auth-secret`](#auth-basic) configuration key.
 * `cross-namespace-services`: Allows or denies cross namespace reading of Kubernetes Service resources, used by [`auth-url`](#auth-external) configuration key.
 
-{{< alert title="Note" >}}
-[`--allow-cross-namespace`]({{% relref "command-line#allow-cross-namespace" %}}) command-line option, if declared, overrides all the secret related configuration keys.
-{{< /alert >}}
+> [!NB] [`--allow-cross-namespace`]({{% relref "command-line#allow-cross-namespace" %}}) command-line option, if declared, overrides all the secret related configuration keys.
 
 ---
 
@@ -1517,14 +1489,14 @@ The following keys are supported:
 * `dns-cluster-domain`: K8s cluster domain, defaults to `cluster.local`
 * `use-resolver`: Name of the resolver that the backend should use
 
-{{< alert title="Important advices" >}}
-* Use resolver with **headless** services, see [k8s doc](https://kubernetes.io/docs/concepts/services-networking/service/#headless-services); otherwise, HAProxy will reference the service IP instead of the endpoints.
-* Beware of DNS cache, eg kube-dns has `--max-ttl` and `--max-cache-ttl` to change its default cache of `30s`.
-{{< /alert >}}
+> [!INFO] Important advices
+>
+> * Use resolver with **headless** services, see [k8s doc](https://kubernetes.io/docs/concepts/services-networking/service/#headless-services); otherwise, HAProxy will reference the service IP instead of the endpoints.
+> * Beware of DNS cache, eg kube-dns has `--max-ttl` and `--max-cache-ttl` to change its default cache of `30s`.
 
 See also:
 
-* [example](https://github.com/jcmoraisjr/haproxy-ingress/tree/master/examples/dns-service-discovery) page.
+* [example](https://github.com/n42-gateway/n42-gateway/tree/master/examples/dns-service-discovery) page.
 * https://docs.haproxy.org/3.0/configuration.html#5.3.2
 * https://docs.haproxy.org/3.0/configuration.html#5.2-resolvers
 * https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/
@@ -1570,13 +1542,13 @@ Configures dynamic backend server updates.
 The `dynamic-scaling` option supports three distinct modes:
 
 * `None`: no API calls are made and HAProxy is always reloaded to apply changes in the backend server, like adding or removing endpoint and weight. `False` is an alias for `None` for backward compatibility.
-* `Slots`: Classic dynamic scaling configuration, implemented on HAProxy Ingress v0.4. Free backend server slots are created on each backend and updated later via API call without reloading HAProxy. Unused servers will stay in a disabled state. HAProxy is reloaded if the change cannot be made via API, or the number of free slots is not enough. `True` is an alias for `Slots` for backward compatibility.
+* `Slots`: Classic dynamic scaling configuration, implemented on N42 Gateway v0.4. Free backend server slots are created on each backend and updated later via API call without reloading HAProxy. Unused servers will stay in a disabled state. HAProxy is reloaded if the change cannot be made via API, or the number of free slots is not enough. `True` is an alias for `Slots` for backward compatibility.
 * `Add`: New backend servers are added when needed via API. No empty slots are created beforehand.
 
 Notes about dynamic scaling:
 
 * The HAProxy config files will stay in sync with in memory configuration, despite of a reload happening or not.
-* Scaling-in the backend (removing servers) will disable and put the removed servers in maintenance state, being removed as soon as HAProxy needs to be reloaded. On `Add` mode, HAProxy Ingress tries to delete the backend server, which will be left behind in the case of a failure, like having active sessions.
+* Scaling-in the backend (removing servers) will disable and put the removed servers in maintenance state, being removed as soon as HAProxy needs to be reloaded. On `Add` mode, N42 Gateway tries to delete the backend server, which will be left behind in the case of a failure, like having active sessions.
 * Dynamic updates are ignored if the backend uses [DNS resolver](#dns-resolvers).
 
 ---
@@ -1810,11 +1782,11 @@ metadata:
 
 Ingress resources can reference a frontend pair using `http-frontend` key. If missing, the default HTTP and HTTPS will be used, and if pointing to a missing or invalid ID, the whole ingress resource will be ignored.
 
-{{< alert "Note" >}}
-Ingress resources that don't declare a frontend ID will use the default HTTP and HTTPS ports for the frontend related configurations, like hostnames and paths, frontend scoped keys, etc. This is the backward compatible behavior.
-
-However, once declared, the frontend ID should match a valid one. The whole ingress resource will be removed from the configuration if there isn't a frontend ID match. This behavior prevents unintended changes on the default frontends if a frontend ID is removed or misconfigured.
-{{< /alert >}}
+> [!INFO] Note
+>
+> Ingress resources that don't declare a frontend ID will use the default HTTP and HTTPS ports for the frontend related configurations, like hostnames and paths, frontend scoped keys, etc. This is the backward compatible behavior.
+>
+> However, once declared, the frontend ID should match a valid one. The whole ingress resource will be removed from the configuration if there isn't a frontend ID match. This behavior prevents unintended changes on the default frontends if a frontend ID is removed or misconfigured.
 
 See below a configuration example:
 
@@ -1909,21 +1881,19 @@ See also:
 Configures HAProxy to pass plain HTTP requests straight to the backends, without further checks, usually from a fronting load balancer doing the SSL offload.
 
 * `http-passthrough`: configures the HTTP frontend as HTTP passthrough. This behavior is achieved globally if both `http-port` and `http-passthrough-port` configure the same TCP port number.
-* `http-passthrough-port`: configures the port number for the HTTP passthrough frontend. If regular HTTP port (via `http-port`) and `http-passthrough-port` differ, HAProxy Ingress configures distinct frontends for regular HTTP and passthrough one, automatically populating ingress routes on both. If their ports match, a single HTTP frontend will be created and it will be configured as HTTP passthrough.
+* `http-passthrough-port`: configures the port number for the HTTP passthrough frontend. If regular HTTP port (via `http-port`) and `http-passthrough-port` differ, N42 Gateway configures distinct frontends for regular HTTP and passthrough one, automatically populating ingress routes on both. If their ports match, a single HTTP frontend will be created and it will be configured as HTTP passthrough.
 * `use-forwarded-proto`: if `true`, the default value, configures HAProxy to redirect the request to https if the `X-Forwarded-Proto` header is not `https`. If `false`, `X-Forwarded-Proto` header is ignored and passed as is to the backend.
 * `fronting-proxy-port` and `https-to-http-port`: deprecated keys, alias to `http-passthrough-port`.
 
-HAProxy Ingress configures HTTP and HTTPS frontends with a few differences, like handling `X-Forwarded-Proto` header, redirect from HTTP if `ssl-redirect` is `true`, add HSTS headers (when configured) only on HTTPS responses, and drop incoming `X-SSL-*` headers for security reasons. Configuring HTTP passthrough makes HAProxy Ingress to have HTTPS behavior over HTTP connection, skipping regular HTTP checks, which allows e.g. a fronting load balancer to SSL offload the TLS requests, talking plain HTTP with HAProxy.
+N42 Gateway configures HTTP and HTTPS frontends with a few differences, like handling `X-Forwarded-Proto` header, redirect from HTTP if `ssl-redirect` is `true`, add HSTS headers (when configured) only on HTTPS responses, and drop incoming `X-SSL-*` headers for security reasons. Configuring HTTP passthrough makes N42 Gateway to have HTTPS behavior over HTTP connection, skipping regular HTTP checks, which allows e.g. a fronting load balancer to SSL offload the TLS requests, talking plain HTTP with HAProxy.
 
 Since v0.17, `http-passthrough` and `use-forwarded-proto` are `Frontend` scoped, which means they can be used as Ingress annotations, provided that the ingress resource references a custom frontend. See [HTTP Frontends](#http-frontends) on how to reference a custom frontend using annotation.
 
-{{< alert title="Note" >}}
-HAProxy Ingress v0.16 and older uses a mix behavior in the case `http-port` and `http-passthrough-port` share the same port number. Since v0.17 this mixed mode is not supported anymore, so a single frontend can be either a regular HTTP or a passthrough one.
-{{< /alert >}}
+> [!NB] N42 Gateway v0.16 and older uses a mix behavior in the case `http-port` and `http-passthrough-port` share the same port number. Since v0.17 this mixed mode is not supported anymore, so a single frontend can be either a regular HTTP or a passthrough one.
 
-{{< alert title="Security warning" color="warning" >}}
-This option must only be used if the network from a fronting load balancer and the ingress nodes is trusted, since the communication happens on plain HTTP, and all the communication is visible via tools like tcpdump. Give also the configured port a special attention and block it from external access: an user can easily add the `X-SSL-*` headers, authenticating themselves as any user on applications using mTLS.
-{{< /alert >}}
+> [!WARNING] Security warning
+>
+> This option must only be used if the network from a fronting load balancer and the ingress nodes is trusted, since the communication happens on plain HTTP, and all the communication is visible via tools like tcpdump. Give also the configured port a special attention and block it from external access: an user can easily add the `X-SSL-*` headers, authenticating themselves as any user on applications using mTLS.
 
 See also:
 
@@ -1942,18 +1912,16 @@ See also:
 
 Overwrites the default response payload for all the HAProxy's generated HTTP responses.
 
-* `http-response-<code>`: Represents all the payload of HAProxy or HAProxy Ingress generated HTTP responses. Used to be a global option up to v0.15, since v0.16 their scope vary depending on the status code. Change `<code>` to one of the supported HTTP status code. See Supported codes below.
+* `http-response-<code>`: Represents all the payload of HAProxy or N42 Gateway generated HTTP responses. Used to be a global option up to v0.15, since v0.16 their scope vary depending on the status code. Change `<code>` to one of the supported HTTP status code. See Supported codes below.
 * `http-response-prometheus-root`: Response used on requests sent to the root context of the prometheus exporter port.
 
 **Supported codes**
 
 The following list has all the HTTP status codes supported by the controller, as well as the scope it is applied:
 
-{{< alert title="Note" >}}
-All the overwrites refer to HAProxy or HAProxy Ingress generated responses, e.g. a 403 response overwrite will not change a 403 response generated by a backend server, but instead only 403 responses that HAProxy generates itself, such as when an allow list rule denies a request to reach a backend server.
-{{< /alert >}}
+> [!NB] All the overwrites refer to HAProxy or N42 Gateway generated responses, e.g. a 403 response overwrite will not change a 403 response generated by a backend server, but instead only 403 responses that HAProxy generates itself, such as when an allow list rule denies a request to reach a backend server.
 
-> All descriptions with `[haproxy]` refers to internal HAProxy responses, described in the [HAProxy documentation](https://docs.haproxy.org/3.0/configuration.html#1.4.1) or in the [MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status). All the others are handled and issued by HAProxy Ingress configurations.
+> All descriptions with `[haproxy]` refers to internal HAProxy responses, described in the [HAProxy documentation](https://docs.haproxy.org/3.0/configuration.html#1.4.1) or in the [MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status). All the others are handled and issued by N42 Gateway configurations.
 
 | Code  | Scope     | Reason | Description |
 |-------|-----------|--------|-------------|
@@ -2106,14 +2074,14 @@ The following annotations are supported:
 Define if HAProxy should save and reload it's current state between server reloads, like
 uptime of backends, qty of requests and so on.
 
-{{< alert title="Warning" color="warning" >}}
-This feature has currently some issues if using with [`dynamic-scaling`](#dynamic-scaling):
-an old state with disabled servers will disable them in the new configuration. There are other
-reported issues with loading server state at [#2103](https://github.com/haproxy/haproxy/issues/2103),
-[#3296](https://github.com/haproxy/haproxy/issues/3296) and
-[mailing-list](https://www.mail-archive.com/haproxy@formilux.org/msg46626.html).
-Understand the risks if using with dynamic scaling before configure it.
-{{< /alert >}}
+> [!WARNING]
+>
+> This feature has currently some issues if using with [`dynamic-scaling`](#dynamic-scaling):
+> an old state with disabled servers will disable them in the new configuration. There are other
+> reported issues with loading server state at [#2103](https://github.com/haproxy/haproxy/issues/2103),
+> [#3296](https://github.com/haproxy/haproxy/issues/3296) and
+> [mailing-list](https://www.mail-archive.com/haproxy@formilux.org/msg46626.html).
+> Understand the risks if using with dynamic scaling before configure it.
 
 See also:
 
@@ -2171,7 +2139,7 @@ websockets, and clusters that frequently changes and forces haproxy to reload.
 
 See also:
 
-* [External HAProxy example]({{% relref "/docs/examples/external-haproxy" %}}) page
+* [External HAProxy example]({{% relref "/examples/external-haproxy" %}}) page
 * https://docs.haproxy.org/3.0/configuration.html#3.1-master-worker
 * https://docs.haproxy.org/3.0/configuration.html#3.1-mworker-max-reloads
 * [master-socket]({{% relref "command-line#master-socket" %}}) and [master-worker]({{% relref "command-line#master-worker" %}}) command-line options
@@ -2212,11 +2180,11 @@ The following keys are supported:
 * `modsecurity-timeout-idle`: Defines the maximum time to wait before close an idle connection. Default value is `30s`.
 * `modsecurity-timeout-processing`: Defines the maximum time to wait for the whole ModSecurity processing. Default value is `1s`.
 * `modsecurity-timeout-server`: Defines the maximum time to wait for an agent response. Configures the haproxy's timeout server. Defaults to `5s` if not configured.
-* `modsecurity-use-coraza`: Defines whether the generated SPOE config should include Coraza-specific values. In order to use Coraza instead of Modsecurity, you must set this to "true" and also set `modsecurity-args` based on the instructions in the [coraza-spoa repository](https://github.com/corazawaf/coraza-spoa). See a [full example using coraza instead of modsecurity]({{% relref "../examples/modsecurity#using-coraza-instead-of-modsecurity" %}}).
+* `modsecurity-use-coraza`: Defines whether the generated SPOE config should include Coraza-specific values. In order to use Coraza instead of Modsecurity, you must set this to "true" and also set `modsecurity-args` based on the instructions in the [coraza-spoa repository](https://github.com/corazawaf/coraza-spoa). See a [full example using coraza instead of modsecurity]({{% relref "/examples/modsecurity#using-coraza-instead-of-modsecurity" %}}).
 
 See also:
 
-* [modsecurity example]({{% relref "../examples/modsecurity" %}}) page.
+* [modsecurity example]({{% relref "/examples/modsecurity" %}}) page.
 * [`waf`](#waf) configuration key.
 * https://www.haproxy.org/download/2.0/doc/SPOE.txt
 * https://docs.haproxy.org/3.0/configuration.html#9.3
@@ -2263,9 +2231,7 @@ OAuth2 expects [oauth2-proxy](https://github.com/oauth2-proxy/oauth2-proxy),
 or any other compatible implementation running as a backend of the same domain that should be protected.
 `oauth2-proxy` has support to GitHub, Google, Facebook, OIDC and [others](https://oauth2-proxy.github.io/oauth2-proxy/docs/configuration/oauth_provider).
 
-{{< alert title="Note" >}}
-OAuth2 needs [`external-has-lua`](#external) enabled if running on an external haproxy deployment. The external haproxy needs Lua json module installed (Alpine's `lua-json4` package)
-{{< /alert >}}
+> [!NB] OAuth2 needs [`external-has-lua`](#external) enabled if running on an external haproxy deployment. The external haproxy needs Lua json module installed (Alpine's `lua-json4` package)
 
 Since v0.13 these same options can be used with [Auth External](#auth-external) configuration keys. Change `<oauth2-proxy-service>` below with the oauth2-proxy service name, and `<hostname>` to the hostname of the oauth2-proxy and the backend servers:
 
@@ -2279,7 +2245,7 @@ See also:
 
 * [Auth External](#auth-external) configuration keys.
 * [`external-has-lua`](#external) configuration key.
-* [example](https://github.com/jcmoraisjr/haproxy-ingress/tree/master/examples/auth/oauth) page.
+* [example](https://github.com/n42-gateway/n42-gateway/tree/master/examples/auth/oauth) page.
 
 ---
 
@@ -2293,11 +2259,11 @@ See also:
 Defines how the path of an incoming request should match a declared path in the ingress object.
 
 * `path-type`: Configures the path type. Case insensitive, so `Begin` and `begin` configures the same path type option. The ingress spec has priority, this option will only be used if the `pathType` attribute from the ingress spec is declared as `ImplementationSpecific`.
-* `path-type-order`: Defines a comma-separated list of the order that non overlapping paths should be matched, which means that `/dir/sub` will always be checked before `/dir` despite their type and the configured order. Mostly used to define when `regex` path types should be checked for incoming requests, since HAProxy Ingress doesn't calculate overlapping from regex paths. All path types must be provided. Case insensitive, use all path types in lowercase.
+* `path-type-order`: Defines a comma-separated list of the order that non overlapping paths should be matched, which means that `/dir/sub` will always be checked before `/dir` despite their type and the configured order. Mostly used to define when `regex` path types should be checked for incoming requests, since N42 Gateway doesn't calculate overlapping from regex paths. All path types must be provided. Case insensitive, use all path types in lowercase.
 
-{{< alert title="Warning" color="warning" >}}
-Wildcard hostnames and alias-regex match incoming requests using the regex path type, even if the path itself has a distinct one. This happens because hostname and path are checked for a match in a single step. So, changing the precedence order of paths also changes the precedence order of hostnames. See also [server-alias-regex](#server-alias) and [strict host](#strict-host).
-{{< /alert >}}
+> [!WARNING]
+>
+> Wildcard hostnames and alias-regex match incoming requests using the regex path type, even if the path itself has a distinct one. This happens because hostname and path are checked for a match in a single step. So, changing the precedence order of paths also changes the precedence order of hostnames. See also [server-alias-regex](#server-alias) and [strict host](#strict-host).
 
 Supported `path-type` values:
 
@@ -2341,16 +2307,16 @@ Here are some notes about enabling peers:
 
 * There is not a centralized data, instead, all the instances of the ingress cluster will talk with each other, sharing their data.
 * Because of the former, the connectivity between all the HAProxy pods via the configured TCP port should be allowed in the cluster.
-* The Kubernetes node will listen to the configured TCP port on its IP address if HAProxy Ingress is deployed in the host network.
+* The Kubernetes node will listen to the configured TCP port on its IP address if N42 Gateway is deployed in the host network.
 
 Aggregation is made locally, which adds some caveats about metrics aggregation:
 
-* From every configured `peers-table-global` or `peers-table`, HAProxy Ingress creates one stick-table per proxy instance, which means that 3 configured backends, from a cluster of 5 ingress nodes, 15 stick-tables will be created on every single instance.
+* From every configured `peers-table-global` or `peers-table`, N42 Gateway creates one stick-table per proxy instance, which means that 3 configured backends, from a cluster of 5 ingress nodes, 15 stick-tables will be created on every single instance.
 * Every table on every instance has the metrics of a single instance, so everytime an aggregated value is needed, haproxy will make a lookup on all the tables that defines that metric, and sum the current value from all of them.
 
 **Usage**
 
-The following examples demonstrate how to configure HAProxy Ingress to collect some request metrics.
+The following examples demonstrate how to configure N42 Gateway to collect some request metrics.
 
 Frontend should be configured via the global ConfigMap:
 
@@ -2383,10 +2349,11 @@ Regarding the configurations above:
 
 This will deny requests from source IPs issuing more than 10rps in average over the last 10 seconds. Since peers is configured, the local metric is shared among all the other proxies. Since the aggregation converter `lua.peers_sum` is used, the 10rps limit corresponds to the sum of all the rate requests from all the proxies of the cluster over that same source IP.
 
-{{< alert title="Note" >}}
-Give the tracked sticky counter names (`track-sc0`, `track-sc1`) a special attention: the backend declared one will not collect request metrics if its ID matches the one used in the frontend. As a suggestion, from the HAProxy documentation:
-> It is a recommended practice to use the first set of counters (`track-sc0`) for the per-frontend counters and the second set (`track-sc0`) for the per-backend ones. But this is just a guideline, all may be used everywhere.
-{{< /alert >}}
+> [!INFO] Note
+>
+> Give the tracked sticky counter names (`track-sc0`, `track-sc1`) a special attention: the backend declared one will not collect request metrics if its ID matches the one used in the frontend. As a suggestion, from the HAProxy documentation:
+>
+> > It is a recommended practice to use the first set of counters (`track-sc0`) for the per-frontend counters and the second set (`track-sc0`) for the per-backend ones. But this is just a guideline, all may be used everywhere.
 
 Useful notes:
 
@@ -2396,7 +2363,7 @@ Useful notes:
 
 **Variables**
 
-HAProxy Ingress provides some variables to be used on configuration snippets, useful on metric related configurations.
+N42 Gateway provides some variables to be used on configuration snippets, useful on metric related configurations.
 
 * `%[peers_group_global]`: name of the group of stick tables declared via `peers-table-global`. Useful to configure peers_sum converter. Visible on both global ConfigMap and annotation based snippets.
 * `%[peers_group_backend]`: name of the group of stick tables declared via `peers-table` annotation. Useful to configure peers_sum converter. Visible only on annotation based snippets.
@@ -2563,7 +2530,7 @@ See also:
 
 Configures how URI of the requests should be rewritten before send the request to the backend.
 
-If [`path-type`](#path-type) is `regex`, HAProxy Ingress copies ingress path and `rewrite-target` verbatim, adding only an implicit `^` anchor in front of the path, just like in the regex path match.
+If [`path-type`](#path-type) is `regex`, N42 Gateway copies ingress path and `rewrite-target` verbatim, adding only an implicit `^` anchor in front of the path, just like in the regex path match.
 
 The following table shows some examples for non regex paths:
 
@@ -2617,9 +2584,9 @@ See also:
 | `use-haproxy-user` | `Global` | `false` | v0.9  |
 | `username`         | `Global` |         | v0.12 |
 
-{{< alert title="Warning" color="warning" >}}
-Since v0.15 HAProxy Ingress starts as the non root user `haproxy`, UID `99`, so all the configurations below can only be used if deployment's security context is changed to run the container as UID `0`.
-{{< /alert >}}
+> [!WARNING]
+>
+> Since v0.15 N42 Gateway starts as the non root user `haproxy`, UID `99`, so all the configurations below can only be used if deployment's security context is changed to run the container as UID `0`.
 
 Change security options for deployments starting as root user.
 
@@ -2629,7 +2596,7 @@ Change security options for deployments starting as root user.
 
 **Starting as root**
 
-In the default configuration HAProxy Ingress container starts as the non root user `haproxy`, UID `99`. Since its 2.4 version, `docker.io/haproxy` image starts as the same user and UID.
+In the default configuration N42 Gateway container starts as the non root user `haproxy`, UID `99`. Since its 2.4 version, `docker.io/haproxy` image starts as the same user and UID.
 
 Starting as root can be useful to configure chroot, and [Security Considerations](https://docs.haproxy.org/3.0/management.html#13) from the HAProxy doc describes some other use cases.
 
@@ -2655,14 +2622,14 @@ controller:
 
 Beware of some chroot limitations:
 
-{{< alert title="Note" >}}
-HAProxy does not have access to the file system after configure a `chroot()`. Unix sockets located outside the chroot directory are used in the following conditions:
-
-* At least one `ssl-passthrough` is used. It enforces the creation of a fronting TCP proxy inside haproxy, which uses an unix socket to communicate with the HTTP frontend.
-* Internal ACME signer is used. HAProxy Ingress creates an internal server to answer the ACME challenge, and haproxy forwards the challenge requests to this server using an unix socket.
-
-So only enable `use-chroot` if not using these features.
-{{< /alert >}}
+> [!INFO] Note
+>
+> HAProxy does not have access to the file system after configure a `chroot()`. Unix sockets located outside the chroot directory are used in the following conditions:
+>
+> * At least one `ssl-passthrough` is used. It enforces the creation of a fronting TCP proxy inside haproxy, which uses an unix socket to communicate with the HTTP frontend.
+> * Internal ACME signer is used. N42 Gateway creates an internal server to answer the ACME challenge, and haproxy forwards the challenge requests to this server using an unix socket.
+>
+> So only enable `use-chroot` if not using these features.
 
 See also:
 
@@ -2715,17 +2682,15 @@ Configures a list of network interface names whose IPv4 address should be used a
 
 As the default behavior, HAProxy will leave the operating system choose the most appropriate address. However the same source address will be used, even if the network interface has more IP address or other interfaces can also reach the destination, leading to outgoing TCP port exhaustion on deployments that needs more than 64k concurrent connections. Using more source IPs allows to bypass the maximum of 64k concurrent connections per instance.
 
-HAProxy Ingress will list all IPv4 from all provided interfaces, ignoring interfaces that cannot be found, does not have IPv4, or cannot list its IPs. The IP addresses will be distributed among all the servers/endpoints, where each distinct server will use an IP from the list as its source address for its outgoing connections. If there are more replicas than IPs, some IPs from the list will be used more than once. If there are more IPs than replicas, some of the IPs from the list will not be used in a particular backend, but can be used on others that shares the configuration. The IP distribution consistently starts on distinct positions on distinct backends, fairly distributing all the IPs from the list on workloads with a big amount of backends with one or so servers each. If all the interfaces failed to list IP address, HAProxy falls back to the default behavior and leaves the operating system to choose the source IP.
+N42 Gateway will list all IPv4 from all provided interfaces, ignoring interfaces that cannot be found, does not have IPv4, or cannot list its IPs. The IP addresses will be distributed among all the servers/endpoints, where each distinct server will use an IP from the list as its source address for its outgoing connections. If there are more replicas than IPs, some IPs from the list will be used more than once. If there are more IPs than replicas, some of the IPs from the list will not be used in a particular backend, but can be used on others that shares the configuration. The IP distribution consistently starts on distinct positions on distinct backends, fairly distributing all the IPs from the list on workloads with a big amount of backends with one or so servers each. If all the interfaces failed to list IP address, HAProxy falls back to the default behavior and leaves the operating system to choose the source IP.
 
 Update also `/proc/sys/net/ipv4/ip_local_port_range` in the HAProxy hosts to allow each source IP use more than its default 28k ephemeral ports.
 
-{{< alert title="Note" >}}
-Neither HAProxy Ingress nor HAProxy will validate if the configured network interface and/or their IPs are valid sources for the outgoing connection, its up to the admin to ensure that the correct interface is properly configured.
-{{< /alert >}}
+> [!NB] Neither N42 Gateway nor HAProxy will validate if the configured network interface and/or their IPs are valid sources for the outgoing connection, its up to the admin to ensure that the correct interface is properly configured.
 
-{{< alert title="Warning" color="warning" >}}
-The source IP is a static configuration added on each backend server. This configuration cannot be used on backends that use DNS resolver.
-{{< /alert >}}
+> [!WARNING]
+>
+> The source IP is a static configuration added on each backend server. This configuration cannot be used on backends that use DNS resolver.
 
 See also:
 
@@ -2770,11 +2735,11 @@ Set the list of cipher algorithms used during the SSL/TLS handshake.
 * `ssl-ciphers`: Cipher suites on TLS up to v1.2 handshake of incoming requests. HAProxy being the TLS server.
 * `ssl-ciphers-backend`: Cipher suites on TLS up to v1.2 handshake to backend/servers. HAProxy being the TLS client.
 
-Default values on HAProxy Ingress up to v0.8:
+Default values on N42 Gateway up to v0.8:
 
 * TLS up to v1.2: `ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!3DES:!MD5:!PSK`
 
-Default values on HAProxy Ingress v0.9 and newer:
+Default values on N42 Gateway v0.9 and newer:
 
 * TLS up to v1.2: `ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384`
 * TLS v1.3: `TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256`
@@ -2885,9 +2850,7 @@ Defines if HAProxy should work in TCP proxy mode and leave the SSL offload to th
 SSL passthrough is a per domain configuration, which means that other domains can be
 configured to SSL offload on HAProxy.
 
-{{< alert title="Note" >}}
-Up to v0.12, `ssl-passthrough` supports only root `/` path. Since v0.13, non root paths are also supported and configured in the HAProxy's HTTP port.
-{{< /alert >}}
+> [!NB] Up to v0.12, `ssl-passthrough` supports only root `/` path. Since v0.13, non root paths are also supported and configured in the HAProxy's HTTP port.
 
 * `ssl-passthrough`: Enable SSL passthrough if defined as `true`. The backend is then expected to SSL offload the incoming traffic. The default value is `false`, which means HAProxy should do the SSL handshake.
 * `ssl-passthrough-http-port`: Optional HTTP port number of the ssl-passthrough backend. If defined, connections to the HAProxy's HTTP port, defaults to `80`, is sent to the configured port number of the backend, which expects to speak plain HTTP. If not defined, connections to the HTTP port will redirect the client to HTTPS. Note that this configuration only applies to the root path, since any non root path under ssl-passthrough configuration is already configured under the plain HTTP frontend.
@@ -2909,7 +2872,7 @@ Hostnames configured as `ssl-passthrough` configures HAProxy in the following wa
 
 Configures if an encrypted connection should be used.
 
-* `ssl-redirect`: Defines if HAProxy should send a `302 redirect` response to requests made on unencrypted connections. Note that this configuration will only make effect if TLS is [configured](https://github.com/jcmoraisjr/haproxy-ingress/tree/master/examples/tls-termination).
+* `ssl-redirect`: Defines if HAProxy should send a `302 redirect` response to requests made on unencrypted connections. Note that this configuration will only make effect if TLS is [configured](https://github.com/n42-gateway/n42-gateway/tree/master/examples/tls-termination).
 * `ssl-redirect-code`: Defines the HTTP status code used in the redirect. The default value is `302` if not declared. Supported values are `301`, `302`, `303`, `307` and `308`.
 * `no-tls-redirect-locations`: Defines a comma-separated list of URLs that should be removed from the TLS redirect. Requests to `:80` http port and starting with one of the URLs from the list will not be redirected to https despite of the TLS redirect configuration. This option defaults to `/.well-known/acme-challenge`, used by ACME protocol.
 
@@ -2997,7 +2960,7 @@ Logging configurations.
 The HAProxy process can also send logs to stdout, instead of an external syslog endpoint or a syslog sidecar, by following the steps below:
 
 * Configure `syslog-endpoint` as `stdout` and `syslog-format` as `raw`
-* From v0.12 and newer, configure HAProxy to run as a sidecar, see the [example page]({{% relref "../examples/external-haproxy" %}})
+* From v0.12 and newer, configure HAProxy to run as a sidecar, see the [example page]({{% relref "/examples/external-haproxy" %}})
 * From v0.14 and newer, it is also possible to make embedded HAProxy send logs to the controller container by adding [`--master-worker`]({{% relref "command-line/#master-worker" %}}) command-line option - in this case, both controller and haproxy logs will share the same stream
 
 See also:
@@ -3029,11 +2992,11 @@ Due to the limited data that can be inspected on TCP requests, a limited number 
 
 TLS configuration is also applied to the TCP service if configured, making HAProxy to ssl offload requests on that port. Default certificate can be used by leaving `.spec.tls[].secretName` empty. Up to `v0.14.7`, a single certificate can be configured for all incoming requests. Since `v0.14.8`, distinct TLS hosts sections can configure distinct certificates for the TLS handshake, chosen based on the provided TLS SNI extension. The first declared secret act as the default certificate if an incoming SNI does not match any host entry. Distinct TLS related configurations, via annotations, can be applied to distinct secrets by splitting the TCP service configuration into distinct ingress resources.
 
-{{< alert title="Note" >}}
-Note that hostname based selection relies on SNI, so it works only on TLS requests. The encrypted content can be offloaded either by HAProxy, providing the hostname in `.spec.rules[].host` and `.spec.tls`, or offloaded by the backend server, providing the hostname only in `.spec.rules[].host`. Non TLS content cannot be multiplexed on the same TCP port for more than one backend.
-
-Note also that, in the case that a hostname does not match, HAProxy will select a backend only if `.spec.defaultBackend` or an empty `.spec.rules[].host` is configured; otherwise, the connection is closed without a response.
-{{< /alert >}}
+> [!INFO] Note
+>
+> Note that hostname based selection relies on SNI, so it works only on TLS requests. The encrypted content can be offloaded either by HAProxy, providing the hostname in `.spec.rules[].host` and `.spec.tls`, or offloaded by the backend server, providing the hostname only in `.spec.rules[].host`. Non TLS content cannot be multiplexed on the same TCP port for more than one backend.
+>
+> Note also that, in the case that a hostname does not match, HAProxy will select a backend only if `.spec.defaultBackend` or an empty `.spec.rules[].host` is configured; otherwise, the connection is closed without a response.
 
 Every TCP service port creates a dedicated haproxy frontend that can be [customized](#configuration-snippet) in three distinct ways:
 
@@ -3041,9 +3004,7 @@ Every TCP service port creates a dedicated haproxy frontend that can be [customi
 * `config-tcp-service` as an Ingress annotation, this will add the snippet in one TCP service
 * `config-proxy` in the global ConfigMap using `_front_tcp_<port-number>` as the proxy name, see in the [configuration snippet](#configuration-snippet) documentation how it works
 
-{{< alert title="Note" >}}
-The documentation continues to refer to the old, and now deprecated [`--tcp-services-configmap`]({{% relref "command-line#tcp-services-configmap" %}}) configuration options. Whenever we are talking about the deprecated option, we will refer it as the "ConfigMap based TCP".
-{{< /alert >}}
+> [!NB] The documentation continues to refer to the old, and now deprecated [`--tcp-services-configmap`]({{% relref "command-line#tcp-services-configmap" %}}) configuration options. Whenever we are talking about the deprecated option, we will refer it as the "ConfigMap based TCP".
 
 See also:
 
@@ -3069,9 +3030,7 @@ See also:
 
 Define timeout configurations. The unit defaults to milliseconds if missing, change the unit with `s`, `m`, `h`, ... suffix.
 
-{{< alert title="Note" >}}
-Since `v0.11`, `timeout-client` and `timeout-client-fin` are global configuration keys and cannot be configured per hostname.
-{{< /alert >}}
+> [!NB] Since `v0.11`, `timeout-client` and `timeout-client-fin` are global configuration keys and cannot be configured per hostname.
 
 The following keys are supported:
 

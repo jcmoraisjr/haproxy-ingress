@@ -3,31 +3,31 @@ title: "Overview"
 linkTitle: "Overview"
 weight: 1
 description: >
-  What HAProxy Ingress is and how it works.
+  What N42 Gateway is and how it works.
 ---
 
 ## HAProxy
 
-{{< alert title="TODO" >}}
-About the HAProxy load balancer itself and why HAProxy.
-{{< /alert >}}
+> [!INFO] TODO
+>
+> About the HAProxy load balancer itself and why HAProxy.
 
 ## Ingress Controllers
 
-{{< alert title="TODO" >}}
-About the Kubernetes' ingress controllers, what HAProxy Ingress watches in the k8s cluster and how it builds HAProxy configuration.
-{{< /alert >}}
+> [!INFO] TODO
+>
+> About the Kubernetes' ingress controllers, what N42 Gateway watches in the k8s cluster and how it builds HAProxy configuration.
 
 ## Releases
 
-HAProxy Ingress is released as a Docker image on top of Alpine's flavor of
+N42 Gateway is released as a Docker image on top of Alpine's flavor of
 [HAProxy image](https://hub.docker.com/_/haproxy).
 
-See the [individual releases](https://github.com/jcmoraisjr/haproxy-ingress/releases)  to read the changelog per release.
+See the [individual releases](https://github.com/n42-gateway/n42-gateway/releases)  to read the changelog per release.
 
-Images are built by a [GitHub Workflow](https://github.com/jcmoraisjr/haproxy-ingress/actions/workflows/image.yaml)
-and deployed to [quay.io](https://quay.io/repository/jcmoraisjr/haproxy-ingress) and
-[Docker Hub](https://hub.docker.com/r/jcmoraisjr/haproxy-ingress) whenever a tag is applied.
+Images are built by a [GitHub Workflow](https://github.com/n42-gateway/n42-gateway/actions/workflows/image.yaml)
+and deployed to [ghcr.io](https://github.com/n42-gateway/n42-gateway/pkgs/container/n42-gateway) and
+[quay.io](https://quay.io/repository/n42-gateway/n42-gateway) whenever a tag is applied.
 The `latest` tag will always point to the latest stable version while `canary` tag will always
 point to the latest beta-quality and release-candidate versions.
 
@@ -37,4 +37,4 @@ a beta-quality or a development version.
 
 ## Where should I go next?
 
-* [Getting Started]({{% relref "../getting-started" %}}): Get started with HAProxy Ingress!
+* [Getting Started]({{% relref "/docs/getting-started" %}}): Get started with N42 Gateway!

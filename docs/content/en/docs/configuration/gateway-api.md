@@ -10,7 +10,7 @@ description: >
 
 ## Installation
 
-The following steps configure the Kubernetes cluster and HAProxy Ingress to read and parse Gateway API resources:
+The following steps configure the Kubernetes cluster and N42 Gateway to read and parse Gateway API resources:
 
 * Manually install the Gateway API CRDs, see instructions in the Gateway API [documentation](https://gateway-api.sigs.k8s.io/guides/getting-started/#installing-gateway-api)
     > Use the experimental channel if need the TCPRoute API, all the other APIs are on the standard channel
@@ -24,7 +24,7 @@ Gateway API has also a command-line tool, see how it works and installation inst
 
 ## Conformance
 
-HAProxy Ingress is a Gateway API conformant implementation. The following APIs have all their core features implemented:
+N42 Gateway is a Gateway API conformant implementation. The following APIs have all their core features implemented:
 
 * Gateway
 * HTTPRoute
@@ -44,21 +44,21 @@ Gateway API resources don't support annotations, this should continue to be unsu
 
 ### Ingress API support
 
-A single HAProxy Ingress deployment can manage Ingress, and all versions of the supported Gateway API resources in the same Kubernetes cluster. If the same hostname and path with the same path type is declared in the Gateway API and Ingress, the Gateway API wins and a warning is logged. Ingress resources will continue to be supported in future controller versions, without side effects, and without the need to install the Gateway API CRDs.
+A single N42 Gateway deployment can manage Ingress, and all versions of the supported Gateway API resources in the same Kubernetes cluster. If the same hostname and path with the same path type is declared in the Gateway API and Ingress, the Gateway API wins and a warning is logged. Ingress resources will continue to be supported in future controller versions, without side effects, and without the need to install the Gateway API CRDs.
 
 ## Getting started
 
 Follow the steps below to expose the echoserver service from the [Getting Started guide]({{% relref "/docs/getting-started" %}}) using the Gateway API.
 
 * [Manually install](https://gateway-api.sigs.k8s.io/guides/getting-started/#installing-gateway-api) the Gateway API CRDs
-* [Install]({{% relref "/docs/getting-started" %}}) or restart HAProxy Ingress so it can find the just installed APIs:
+* [Install]({{% relref "/docs/getting-started" %}}) or restart N42 Gateway so it can find the just installed APIs:
 
     ```
     $ kubectl --namespace ingress-controller delete pod -lapp.kubernetes.io/name=haproxy-ingress
     ```
 
 * Create a GatewayClass with the following content:
-    > GatewayClass enables Gateways to be read and parsed by HAProxy Ingress.
+    > GatewayClass enables Gateways to be read and parsed by N42 Gateway.
 
     ```yaml
     apiVersion: gateway.networking.k8s.io/v1
@@ -95,7 +95,7 @@ Follow the steps below to expose the echoserver service from the [Getting Starte
         protocol: HTTP
     ```
 
-* Create a HTTPRoute with the following content, changing `echoserver-from-gateway.local` to a hostname that resolves to a HAProxy Ingress node:
+* Create a HTTPRoute with the following content, changing `echoserver-from-gateway.local` to a hostname that resolves to a N42 Gateway node:
     > HTTPRoutes configure the hostnames and target services.
 
     ```yaml
@@ -131,7 +131,7 @@ Follow the steps below to expose the echoserver service from the [Getting Starte
     $ kubectl --namespace default expose deployment redis --port=6379
     ```
 
-* A new port need to be added if HAProxy Ingress is not configured in the host network. If so, add the following snippet in `values.yaml` and apply it using Helm:
+* A new port need to be added if N42 Gateway is not configured in the host network. If so, add the following snippet in `values.yaml` and apply it using Helm:
 
     ```yaml
     controller:
@@ -178,7 +178,7 @@ Follow the steps below to expose the echoserver service from the [Getting Starte
           port: 6379
     ```
 
-* Send a ping to the Redis server using `curl`. Change `192.168.106.2` below to the IP address of HAProxy Ingress:
+* Send a ping to the Redis server using `curl`. Change `192.168.106.2` below to the IP address of N42 Gateway:
    > Type `ping` and see a `+PONG` response. Press `^C` to close the connection.
 
     ```

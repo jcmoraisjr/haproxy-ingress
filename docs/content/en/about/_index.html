@@ -7,34 +7,44 @@ menu:
 ---
 
 {{< blocks/cover image_anchor="bottom" height="min" >}}
-<h1 class="display-5 mt-md-5 pb-4" style="font-weight: 600;">About HAProxy Ingress</h1>
-<p class="lead mt-5">
-  HAProxy Ingress watches gateway, ingress and other resources from a Kubernetes cluster,
+<img src="/logo.svg" width="160px" />
+<h1 class="display-2 mt-md-5">About N42 Gateway</h1>
+{{< /blocks/cover >}}
+
+{{< blocks/lead color="dark" >}}
+<p>
+  N42 Gateway watches Ingress and Gateway resources from a Kubernetes cluster,
   and configures a HAProxy instance which will route incoming requests to the pods.
   Updates to the cluster state is automatically applied to the HAProxy instance.
 </p>
-{{< /blocks/cover >}}
+<p class="mt-5">
+  N42 Gateway is the continuation of the HAProxy Ingress project, renamed in 2026 to better
+  distinguish the project from products and services offered by HAProxy Technologies SAS.
+</p>
+{{< /blocks/lead >}}
 
-{{< blocks/lead >}}
+{{< blocks/lead color="primary" >}}
 <p>
-  HAProxy is a fast and reliable TCP and HTTP reverse proxy and load balancer.
-  HAProxy Ingress carefully build an optimized HAProxy configuration, which allows
+  HAProxy&reg; is a fast and reliable TCP and HTTP reverse proxy and load balancer.
+  <br/>
+  N42 Gateway carefully build an optimized HAProxy configuration, which allows
   thousands of requests per second per proxy, despite the size of your cluster,
   with a very low latency.
 </p>
-<p>
+<p class="mt-5">
   Kubernetes is a system which automates the deployment of containerized applications.
-  HAProxy Ingress uses deployment and exposing spec from the Kubernetes cluster
+  <br/>
+  N42 Gateway uses deployment and exposing spec from the Kubernetes cluster
   to build routing rules, allowing incoming requests from an external network
   to the in-cluster applications.
 </p>
 {{< /blocks/lead >}}
 
-{{< blocks/lead color="dark" >}}
-<p>
-  See HAProxy Ingress in action!
+{{< blocks/section color="dark" >}}
+<p class="h2 text-center">
+  See N42 Gateway in action!
 </p>
-<p>
+<p class="lead text-center mt-4">
   Visit our <a href="{{% relref "/docs" %}}">documentation</a> to get started.
 </p>
-{{< /blocks/lead >}}
+{{< /blocks/section >}}
