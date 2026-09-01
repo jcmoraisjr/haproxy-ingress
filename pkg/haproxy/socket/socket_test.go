@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -458,7 +459,7 @@ func TestHAProxyProcsLoop(t *testing.T) {
 		cli := &clientMock{
 			cmdError: syscall.ECONNREFUSED,
 		}
-		time.AfterFunc(test.reload, func() { cli.cmdError = nil })
+		time.AfterFunc(test.reload, func() { cli.setError(nil) })
 		start := time.Now()
 		_, err := HAProxyProcs(ctx, cli)
 		if err != nil {
@@ -493,6 +494,13 @@ type clientMock struct {
 	cmdError  error
 	callCnt   int
 	hasSock   bool
+	mutex     sync.Mutex
+}
+
+func (c *clientMock) setError(err error) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	c.cmdError = err
 }
 
 func (c *clientMock) Address() string {
@@ -507,6 +515,8 @@ func (c *clientMock) HasConn() bool {
 }
 
 func (c *clientMock) Send(observer func(duration time.Duration), command ...string) ([]string, error) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 	c.callCnt++
 	return c.cmdOutput, c.cmdError
 }
