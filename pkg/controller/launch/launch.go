@@ -50,6 +50,7 @@ func Run(cfg *config.Config) error {
 		Cache: cache.Options{
 			SyncPeriod:        cfg.ResyncPeriod,
 			DefaultNamespaces: defaultNamespaces,
+			DefaultTransform:  cache.TransformStripManagedFields(),
 		},
 	})
 	if err != nil {
