@@ -45,8 +45,7 @@ gotestsum:
 
 .PHONY: test
 test: gotestsum
-	## fix race and add -race param
-	$(LOCAL_GOTESTSUM) --format=testname -- -tags=cgo ./pkg/...
+	$(LOCAL_GOTESTSUM) --format=testname -- -race -tags=cgo ./pkg/...
 
 .PHONY: golangci-lint
 golangci-lint:
