@@ -119,6 +119,38 @@ INFO-V(2) empty response from server
 INFO-V(2) updated endpoint '10.233.18.242:80' weight '1' on backend/server 'default_app_8080/srv001'
 `,
 		},
+		"service-upstream-port-change-api-error": {
+			doconfig1: func(c *testConfig) {
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
+				b.HealthCheck.Interval = "2s"
+				b.AcquireEndpoint("10.233.65.98", 8080, "")
+			},
+			doconfig2: func(c *testConfig) {
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
+				b.Dynamic.DynScaling = types.DynScalingSlots
+				b.HealthCheck.Interval = "2s"
+				b.AcquireEndpoint("10.233.18.242", 80, "")
+			},
+			expected: []string{
+				"srv001:10.233.18.242:80:1",
+			},
+			dynamic: false,
+			cmd: `
+set server default_app_8080/srv001 addr 10.233.18.242 port 80
+set server default_app_8080/srv001 check-port 80
+`,
+			cmdOutput: []string{
+				"IP changed from '10.233.65.98' to '10.233.18.242' by 'stats socket command'",
+				"error from runtime api",
+			},
+			logging: `
+INFO-V(2) api call: set server default_app_8080/srv001 addr 10.233.18.242 port 80
+INFO-V(2) response from server: IP changed from '10.233.65.98' to '10.233.18.242' by 'stats socket command'
+INFO-V(2) api call: set server default_app_8080/srv001 check-port 80
+WARN unrecognized response updating (check port) backend server default_app_8080/srv001: error from runtime api
+INFO-V(2) need to reload due to config changes: [backends]
+`,
+		},
 		"test04": {
 			doconfig1: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")

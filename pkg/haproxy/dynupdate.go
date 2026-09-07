@@ -518,14 +518,18 @@ func (d *dynUpdater) execEnableEndpoint(backend *hatypes.Backend, oldEP, curEP *
 
 func (d *dynUpdater) shouldUpdateCheckPort(backend *hatypes.Backend, oldEP, curEP *hatypes.Endpoint) bool {
 	return oldEP != nil &&
-		oldEP.Port != curEP.Port &&
-		backend.HealthCheck.Port == 0 &&
-		backendHasHealthCheck(backend)
+		oldEP.Port != curEP.Port && // only if endpoint port changed;
+		backend.HealthCheck.Port == 0 && // ... and defaulting to the endpoint port;
+		backendHasHealthCheck(backend) // ... and health check is enabled.
 }
 
 func backendHasHealthCheck(backend *hatypes.Backend) bool {
+	// We are missing a flag stating whether the health check is enabled.
+	// This func follows the current check in the template counterpart:
+	// {{- if or $hc.Port $hc.Addr $hc.Interval $hc.RiseCount $hc.FallCount }}
+	// https://github.com/jcmoraisjr/haproxy-ingress/blob/bc62f480405f4a225735505a7c84d1bc340b468c/rootfs/etc/templates/haproxy/haproxy.tmpl#L940
 	hc := backend.HealthCheck
-	return hc.Addr != "" || hc.FallCount != 0 || hc.Interval != "" || hc.RiseCount != 0
+	return hc.Port != 0 || hc.Addr != "" || hc.Interval != "" || hc.RiseCount != 0 || hc.FallCount != 0
 }
 
 func (d *dynUpdater) execAddEndpoint(backend *hatypes.Backend, ep *hatypes.Endpoint) bool {
