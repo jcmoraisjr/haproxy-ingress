@@ -307,7 +307,7 @@ func (d *dynUpdater) dynamicallySyncSlots(pair *backendPair) bool {
 			// if cookie doesn't match here and preserving the value is
 			// important, don't even enable the endpoint before reloading
 			updated = false
-		} else if !d.execEnableEndpoint(curBack.ID, nil, added[i]) || added[i].Label != "" {
+		} else if !d.execEnableEndpoint(curBack, nil, added[i]) || added[i].Label != "" {
 			updated = false
 		}
 	}
@@ -392,7 +392,7 @@ func (d *dynUpdater) checkEndpointPair(backend *hatypes.Backend, pair *epPair) b
 	}
 	if reflect.DeepEqual(&oldEPCopy, pair.cur) {
 		// TODO revisit Label check, this is related with blue/green deployment
-		return d.execEnableEndpoint(backend.ID, pair.old, pair.cur) && pair.old.Label == "" && pair.cur.Label == ""
+		return d.execEnableEndpoint(backend, pair.old, pair.cur) && pair.old.Label == "" && pair.cur.Label == ""
 	}
 
 	// cannot handle via enablement, need to either delete+add or reload,
@@ -497,8 +497,15 @@ func (d *dynUpdater) execDisableEndpoint(backname string, ep *hatypes.Endpoint) 
 	return true
 }
 
-func (d *dynUpdater) execEnableEndpoint(backname string, oldEP, curEP *hatypes.Endpoint) bool {
-	if !d.execSetAddrServer(backname, curEP) || !d.execSetWeightServer(backname, curEP) || !d.execEnableServer(backname, curEP) {
+func (d *dynUpdater) execEnableEndpoint(backend *hatypes.Backend, oldEP, curEP *hatypes.Endpoint) bool {
+	backname := backend.ID
+	if !d.execSetAddrServer(backname, curEP) {
+		return false
+	}
+	if d.shouldUpdateCheckPort(backend, oldEP, curEP) && !d.execSetCheckPortServer(backname, curEP) {
+		return false
+	}
+	if !d.execSetWeightServer(backname, curEP) || !d.execEnableServer(backname, curEP) {
 		return false
 	}
 	event := "updated"
@@ -507,6 +514,18 @@ func (d *dynUpdater) execEnableEndpoint(backname string, oldEP, curEP *hatypes.E
 	}
 	d.logger.InfoV(2, "%s endpoint '%s' weight '%d' on backend/server '%s/%s'", event, curEP.Target, curEP.Weight, backname, curEP.Name)
 	return true
+}
+
+func (d *dynUpdater) shouldUpdateCheckPort(backend *hatypes.Backend, oldEP, curEP *hatypes.Endpoint) bool {
+	return oldEP != nil &&
+		oldEP.Port != curEP.Port &&
+		backend.HealthCheck.Port == 0 &&
+		backendHasHealthCheck(backend)
+}
+
+func backendHasHealthCheck(backend *hatypes.Backend) bool {
+	hc := backend.HealthCheck
+	return hc.Addr != "" || hc.FallCount != 0 || hc.Interval != "" || hc.RiseCount != 0
 }
 
 func (d *dynUpdater) execAddEndpoint(backend *hatypes.Backend, ep *hatypes.Endpoint) bool {
@@ -577,6 +596,11 @@ func (d *dynUpdater) execSetAddrServer(backname string, ep *hatypes.Endpoint) bo
 	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdSetServerAddr)
 }
 
+func (d *dynUpdater) execSetCheckPortServer(backname string, ep *hatypes.Endpoint) bool {
+	cmd := fmt.Sprintf("set server %s/%s check-port %d", backname, ep.Name, ep.Port)
+	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdSetServerCheckPort)
+}
+
 func (d *dynUpdater) execSetWeightServer(backname string, ep *hatypes.Endpoint) bool {
 	cmd := fmt.Sprintf("set server %s/%s weight %d", backname, ep.Name, ep.Weight)
 	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdSetServerWeight)
@@ -611,6 +635,7 @@ type cmdClass int
 const (
 	cmdAddServer cmdClass = iota
 	cmdSetServerAddr
+	cmdSetServerCheckPort
 	cmdSetServerWeight
 	cmdSetServerState
 	cmdDelServer
@@ -618,11 +643,12 @@ const (
 )
 
 var backendServerCmdAction = map[cmdClass]string{
-	cmdAddServer:       "adding",
-	cmdSetServerAddr:   "updating (address)",
-	cmdSetServerWeight: "updating (weight)",
-	cmdSetServerState:  "updating (state)",
-	cmdDelServer:       "deleting",
+	cmdAddServer:          "adding",
+	cmdSetServerAddr:      "updating (address)",
+	cmdSetServerCheckPort: "updating (check port)",
+	cmdSetServerWeight:    "updating (weight)",
+	cmdSetServerState:     "updating (state)",
+	cmdDelServer:          "deleting",
 }
 
 func (d *dynUpdater) execCommandBackendServer(observer func(duration time.Duration), backname string, ep *hatypes.Endpoint, cmd string, cmdcls cmdClass) bool {
@@ -664,6 +690,8 @@ func cmdResponseOK(cmdcls cmdClass, response string) bool {
 		return response == "New server registered."
 	case cmdSetServerAddr:
 		return response == "nothing changed" || strings.HasPrefix(response, "IP changed from ") || strings.HasPrefix(response, "port changed from ") || strings.HasPrefix(response, "no need to change ")
+	case cmdSetServerCheckPort:
+		return response == "" || response == "nothing changed" || strings.HasPrefix(response, "check port changed from ") || strings.HasPrefix(response, "no need to change ")
 	case cmdSetServerWeight, cmdSetServerState:
 		return response == ""
 	case cmdDelServer:
