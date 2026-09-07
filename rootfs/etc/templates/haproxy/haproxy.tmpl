@@ -416,13 +416,13 @@ backend {{ $backend.ID }}
     acl deny_exception_tcp src{{ range $e := $e1 }} {{ $e }}{{ end }}
 {{- end }}
 {{- if $backend.AllowedIPTCP.Exception }}
-    tcp-request content reject if allow_exception_tcp
+    tcp-request content {{ $backend.AllowedIPTCP.TCPAction }} if allow_exception_tcp
 {{- end }}
 {{- if $backend.AllowedIPTCP.Rule }}
-    tcp-request content reject if !allow_rule_tcp
+    tcp-request content {{ $backend.AllowedIPTCP.TCPAction }} if !allow_rule_tcp
 {{- end }}
 {{- if or $backend.DeniedIPTCP.Rule $backend.DeniedIPTCP.Exception }}
-    tcp-request content reject if
+    tcp-request content {{ $backend.DeniedIPTCP.TCPAction }} if
         {{- if $backend.DeniedIPTCP.Rule }} deny_rule_tcp{{ end }}
         {{- if $backend.DeniedIPTCP.Exception }} !deny_exception_tcp{{ end }}
 {{- end }}
@@ -598,12 +598,12 @@ backend {{ $backend.ID }}
 {{- end }}
 {{- range $pathIDs := $allowCfg.PathIDs $i }}
 {{- if $allow.Exception }}
-    http-request deny if
+    http-request {{ $allow.HTTPAction }} if
         {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
         {{- "" }} allow_exception_src{{ $i }}
 {{- end }}
 {{- if $allow.Rule }}
-    http-request deny if
+    http-request {{ $allow.HTTPAction }} if
         {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
         {{- "" }} !allow_rule_src{{ $i }}
 {{- end }}
@@ -618,7 +618,7 @@ backend {{ $backend.ID }}
     acl deny_exception_src{{ $i }} src{{ range $e := $e1 }} {{ $e }}{{ end }}
 {{- end }}
 {{- range $pathIDs := $denyCfg.PathIDs $i }}
-    http-request deny if
+    http-request {{ $deny.HTTPAction }} if
         {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
         {{- if $deny.Rule }} deny_rule_src{{ $i }}{{ end }}
         {{- if $deny.Exception }} !deny_exception_src{{ $i }}{{ end }}

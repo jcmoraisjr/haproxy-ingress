@@ -846,9 +846,30 @@ type BackendRedirect struct {
 
 // AccessConfig ...
 type AccessConfig struct {
-	Rule         []string
-	Exception    []string
-	SourceHeader string
+	Rule            []string
+	Exception       []string
+	SourceHeader    string
+	EnforcementMode string
+}
+
+// HTTPAction returns the http-request action used to reject a request
+// whose source IP does not fulfill the access configuration.
+func (ac AccessConfig) HTTPAction() string {
+	switch ac.EnforcementMode {
+	case "reject", "silent-drop":
+		return ac.EnforcementMode
+	}
+	return "deny"
+}
+
+// TCPAction returns the tcp-request content action used to reject a
+// connection whose source IP does not fulfill the access configuration.
+// "deny" and "reject" modes behave the same on TCP services.
+func (ac AccessConfig) TCPAction() string {
+	if ac.EnforcementMode == "silent-drop" {
+		return "silent-drop"
+	}
+	return "reject"
 }
 
 // RewriteConfig ...
