@@ -126,9 +126,9 @@ func (c *c) IsValidIngress(ing *networking.Ingress) bool {
 	var ann string
 	ann, hasAnn = ing.Annotations["kubernetes.io/ingress.class"]
 	if c.config.WatchIngressWithoutClass {
-		fromAnn = !hasAnn || ann == c.config.IngressClass
+		fromAnn = !hasAnn || ann == c.config.IngressClass || ann == c.config.ConfigurationClass
 	} else {
-		fromAnn = hasAnn && ann == c.config.IngressClass
+		fromAnn = hasAnn && (ann == c.config.IngressClass || ann == c.config.ConfigurationClass)
 	}
 
 	// check if ingress `hasClass` and, if so, if it's valid `fromClass` perspective
@@ -171,7 +171,8 @@ func (c *c) IsValidIngress(ing *networking.Ingress) bool {
 }
 
 func (c *c) IsValidIngressClass(ingressClass *networking.IngressClass) bool {
-	return ingressClass.Spec.Controller == c.config.ControllerName
+	return ingressClass.Spec.Controller == c.config.ControllerName || // regular check via controller name
+		ingressClass.Name == c.config.ConfigurationClass // extra check via configuration class override
 }
 
 func (c *c) IsValidGateway(gateway *gatewayv1.Gateway) bool {
@@ -199,7 +200,8 @@ func (c *c) IsValidGateway(gateway *gatewayv1.Gateway) bool {
 }
 
 func (c *c) IsValidGatewayClass(class *gatewayv1.GatewayClass) bool {
-	return class.Spec.ControllerName == gatewayv1.GatewayController(c.config.ControllerName)
+	return class.Spec.ControllerName == gatewayv1.GatewayController(c.config.ControllerName) || // regular check via controller name
+		class.Name == c.config.ConfigurationClass // extra check via configuration class override
 }
 
 func (c *c) ExternalNameLookup(externalName string) ([]net.IP, error) {

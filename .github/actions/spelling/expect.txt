@@ -128,7 +128,6 @@ expmatch
 extfile
 extwild
 fcgiapp
-feb
 ffconf
 ffexp
 fhdr
@@ -152,6 +151,7 @@ gks
 glbc
 glog
 goimports
+goldmark
 gomod
 goruntime
 gotemplate
@@ -245,7 +245,6 @@ IXYK
 jcmoraisjr
 jinzhu
 joaomora
-jul
 Jurriaan
 Karan
 keyder
@@ -265,7 +264,6 @@ leastconn
 legacylogger
 lfactory
 linereader
-Linforth
 listlen
 listname
 llink
@@ -281,6 +279,7 @@ lsplit
 luadir
 luares
 luarocks
+maintainership
 makepasswd
 mapstructure
 mastersock
@@ -353,7 +352,7 @@ pathtype
 pawelb
 pcre
 percentunit
-Pixabay
+Pexels
 pkgtypes
 pns
 portnumber
@@ -439,6 +438,7 @@ sslpassthrough
 sslredir
 sslredirect
 ssvc
+Starostin
 statefulset
 stktable
 Sto

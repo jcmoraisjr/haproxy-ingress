@@ -54,11 +54,13 @@ type Options struct {
 	DefaultSvc               string
 	IngressClass             string
 	IngressClassPrecedence   bool
+	ConfigurationClass       string
 	DisableIngressClassAPI   bool
 	ReloadStrategy           string
 	MaxOldConfigFiles        int
 	ValidateConfig           bool
 	ControllerClass          string
+	FullControllerName       string
 	WatchIngressWithoutClass bool
 	WatchIngress             bool
 	WatchGateway             bool
@@ -167,6 +169,12 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 		"Name of the IngressClass to route through this controller.",
 	)
 
+	fs.StringVar(&o.ConfigurationClass, "configuration-class", o.ConfigurationClass, ""+
+		"Name of an additional class to route through this controller. Ingress or "+
+		"Gateway API resources using this class name are added to the final "+
+		"configuration, but their status are not updated.",
+	)
+
 	fs.BoolVar(&o.IngressClassPrecedence, "ingress-class-precedence", o.IngressClassPrecedence, ""+
 		"Defines if IngressClass resource should take precedence over "+
 		"kubernetes.io/ingress.class annotation if both are defined and conflicting.",
@@ -196,6 +204,13 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 		"IngressClass is 'haproxy-ingress.github.io/controller'. Non-empty values add a "+
 		"new /path, e.g., controller-class=staging will make this controller look for "+
 		"'haproxy-ingress.github.io/controller/staging'",
+	)
+
+	fs.StringVar(&o.FullControllerName, "full-controller-name", o.FullControllerName, ""+
+		"Defines a fully qualified controller name this controller should listen to. If "+
+		"configured, this controller will listen to Ingress and Gateway resources whose "+
+		"controller's class matches this configuration, ignoring --controller-class "+
+		"option.",
 	)
 
 	fs.BoolVar(&o.DisableIngressClassAPI, "disable-ingress-class-api", o.DisableIngressClassAPI, ""+
