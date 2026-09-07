@@ -26,6 +26,7 @@ The following command-line options are supported:
 | [`--configmap`](#configmap)                             | namespace/configmapname    |                         |       |
 | [`--connection-timeout`](#timeout)                      | duration                   | `30s`                   | v0.14.11 |
 | [`--controller-class`](#ingress-class)                  | suffix                     | `""`                    | v0.12 |
+| [`--configuration-class`](#configuration-class)         | name                       | `""`                    | v0.17 |
 | [`--default-backend-service`](#default-backend-service) | namespace/servicename      | haproxy's 404 page      |       |
 | [`--default-ssl-certificate`](#default-ssl-certificate) | namespace/secretname       | fake, auto generated    |       |
 | [`--disable-api-warnings`](#disable-api-warnings)       | [true\|false]              | `false`                 | v0.12 |
@@ -188,6 +189,19 @@ silently fail.  Version 0.13 and later will crash if the ConfigMap is unreadable
 See also:
 
 * [custom-configuration example using `--configmap`](https://github.com/n42-gateway/n42-gateway/blob/master/examples/custom-configuration/README.md)
+
+### configuration-class
+
+* `--configuration-class`
+
+Defines the name of an additional class to route through this controller. Ingress or Gateway API resources using this class name are added to the final HAProxy configuration.
+
+This option merges the configuration of the additional class with the primary configuration defined via `--ingress-class` and `--controller-class` options. This is however a "read only" option: Ingress and Gateway API resources using this additional class are added to the HAProxy configuration, but their status are not updated, which avoids conflict with other controller sharing this same class.
+
+See also:
+
+* [Ingress and Gateway API class](#ingress-class)
+* [Migration guide]({{% relref "migration-guide" %}})
 
 ---
 

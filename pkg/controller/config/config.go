@@ -561,6 +561,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		BackendShards:            opt.BackendShards,
 		BucketsResponseTime:      opt.BucketsResponseTime,
 		ConfigMapName:            opt.ConfigMap,
+		ConfigurationClass:       opt.ConfigurationClass,
 		ConnectionTimeout:        opt.ConnectionTimeout,
 		ControllerName:           controllerName,
 		ControllerPod:            controllerPod,
@@ -884,6 +885,7 @@ type Config struct {
 	BackendShards            int
 	BucketsResponseTime      []float64
 	ConfigMapName            string
+	ConfigurationClass       string
 	ConnectionTimeout        time.Duration
 	ControllerName           string
 	ControllerPod            types.NamespacedName
