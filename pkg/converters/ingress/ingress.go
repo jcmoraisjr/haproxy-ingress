@@ -963,8 +963,10 @@ func (c *converter) addBackend(source *annotations.Source, pathLink *hatypes.Pat
 		switch mapper.Get(ingtypes.BackBackendServerNaming).Value {
 		case "ip":
 			backend.EpNaming = hatypes.EpIPPort
+			backend.ServerRename = mapper.Get(ingtypes.BackBackendServerRename).Bool()
 		case "pod":
 			backend.EpNaming = hatypes.EpTargetRef
+			backend.ServerRename = mapper.Get(ingtypes.BackBackendServerRename).Bool()
 		default:
 			backend.EpNaming = hatypes.EpSequence
 		}

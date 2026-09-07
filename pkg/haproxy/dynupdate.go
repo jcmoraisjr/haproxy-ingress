@@ -268,6 +268,12 @@ func (d *dynUpdater) dynamicallySyncSlots(pair *backendPair) bool {
 		}
 	}
 
+	// TODO: gate wantRename on the HAProxy version once version tracking is
+	// added to the model; 'set server <b>/<s> name' first shipped in HAProxy
+	// 3.5-dev4 (dev snapshot; not yet in a stable release). On older HAProxy
+	// the CLI rejects the command and execSetNameServer falls back to a reload.
+	wantRename := curBack.ServerRename
+
 	// reuse the backend/server which has the same target endpoint, if found,
 	// this will save some socket calls and will not mess endpoint metrics
 	var added []*hatypes.Endpoint
@@ -302,11 +308,22 @@ func (d *dynUpdater) dynamicallySyncSlots(pair *backendPair) bool {
 	}
 	for i := range added {
 		// reusing empty slots from oldBack
+		desiredName := added[i].Name
 		added[i].Name = empty[i].Name
 		if curBack.Cookie.Preserve && added[i].CookieValue != empty[i].CookieValue {
 			// if cookie doesn't match here and preserving the value is
-			// important, don't even enable the endpoint before reloading
+			// important, don't even enable the endpoint before reloading.
+			// Still update the in-memory name so it's correct after reload.
+			if wantRename && desiredName != empty[i].Name {
+				added[i].Name = desiredName
+			}
 			updated = false
+		} else if wantRename && desiredName != empty[i].Name {
+			if !d.execRenameEndpoint(curBack.ID, added[i], desiredName) {
+				// rename failed; leave the slot disabled and let a reload fix it
+				updated = false
+				continue
+			}
 		} else if !d.execEnableEndpoint(curBack.ID, nil, added[i]) || added[i].Label != "" {
 			updated = false
 		}
@@ -601,6 +618,51 @@ func (d *dynUpdater) execEnableServer(backname string, ep *hatypes.Endpoint) boo
 	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdSetServerState)
 }
 
+func (d *dynUpdater) execSetNameServer(backname string, ep *hatypes.Endpoint, newName string) bool {
+	cmd := fmt.Sprintf("set server %s/%s name %s", backname, ep.Name, newName)
+	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdSetServerName)
+}
+
+// execClearCountersServer resets a single server's statistics counters via the
+// "clear counters server <b>/<s> force" CLI command; the server must be in
+// maintenance mode (same precondition as "set server ... name").
+//
+// The "force" keyword is required when counters live in a shared-memory stats
+// file (shm-stats-file), where the command otherwise refuses to break the
+// monotonicity monitoring tools rely on. Breaking it is the intent here since
+// the slot now backs a different logical entity, and "force" is harmless
+// without a shm-stats-file.
+//
+// The command first shipped in HAProxy 3.5-dev4 (not yet in a stable release),
+// so on the versions most users run it fails; callers treat that as a soft
+// failure, leaving counters accumulated from the previous occupant until the
+// next reload.
+func (d *dynUpdater) execClearCountersServer(backname string, ep *hatypes.Endpoint) bool {
+	cmd := fmt.Sprintf("clear counters server %s/%s force", backname, ep.Name)
+	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdClearCountersServer)
+}
+
+// execRenameEndpoint renames a previously empty slot (which must already be in
+// maintenance mode) from its current name to newName and then enables it for
+// ep. Returns true if both the rename and the enable succeeded.
+func (d *dynUpdater) execRenameEndpoint(backname string, ep *hatypes.Endpoint, newName string) bool {
+	oldName := ep.Name
+	if !d.execSetNameServer(backname, ep, newName) {
+		return false
+	}
+	ep.Name = newName
+	d.logger.InfoV(2, "renamed server on backend '%s' from '%s' to '%s'", backname, oldName, newName)
+
+	// Reset counters while still in maintenance so the new occupant starts
+	// clean; non-fatal, since the rename has already committed.
+	_ = d.execClearCountersServer(backname, ep)
+
+	if !d.execEnableEndpoint(backname, nil, ep) || ep.Label != "" {
+		return false
+	}
+	return true
+}
+
 func (d *dynUpdater) execDeleteServer(backname string, ep *hatypes.Endpoint) bool {
 	cmd := fmt.Sprintf("del server %s/%s", backname, ep.Name)
 	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdDelServer)
@@ -613,16 +675,20 @@ const (
 	cmdSetServerAddr
 	cmdSetServerWeight
 	cmdSetServerState
+	cmdSetServerName
+	cmdClearCountersServer
 	cmdDelServer
 	cmdCommitCrt
 )
 
 var backendServerCmdAction = map[cmdClass]string{
-	cmdAddServer:       "adding",
-	cmdSetServerAddr:   "updating (address)",
-	cmdSetServerWeight: "updating (weight)",
-	cmdSetServerState:  "updating (state)",
-	cmdDelServer:       "deleting",
+	cmdAddServer:           "adding",
+	cmdSetServerAddr:       "updating (address)",
+	cmdSetServerWeight:     "updating (weight)",
+	cmdSetServerState:      "updating (state)",
+	cmdSetServerName:       "updating (name)",
+	cmdClearCountersServer: "clearing counters",
+	cmdDelServer:           "deleting",
 }
 
 func (d *dynUpdater) execCommandBackendServer(observer func(duration time.Duration), backname string, ep *hatypes.Endpoint, cmd string, cmdcls cmdClass) bool {
@@ -666,6 +732,10 @@ func cmdResponseOK(cmdcls cmdClass, response string) bool {
 		return response == "nothing changed" || strings.HasPrefix(response, "IP changed from ") || strings.HasPrefix(response, "port changed from ") || strings.HasPrefix(response, "no need to change ")
 	case cmdSetServerWeight, cmdSetServerState:
 		return response == ""
+	case cmdSetServerName:
+		return response == "Server name updated."
+	case cmdClearCountersServer:
+		return response == "Server counters cleared."
 	case cmdDelServer:
 		return response == "Server deleted."
 	case cmdCommitCrt:

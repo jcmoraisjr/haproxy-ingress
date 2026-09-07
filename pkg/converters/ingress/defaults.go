@@ -51,6 +51,7 @@ func createDefaults() map[string]string {
 		types.BackAuthHeadersSucceed:       "*",
 		types.BackAuthMethod:               "GET",
 		types.BackBackendServerNaming:      "sequence",
+		types.BackBackendServerRename:      "false",
 		types.BackBackendServerSlotsInc:    "1",
 		types.BackSlotsMinFree:             "6",
 		types.BackBalanceAlgorithm:         "random(2)",

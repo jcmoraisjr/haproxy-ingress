@@ -691,6 +691,16 @@ type Backend struct {
 	SourceIPs []net.IP
 	Endpoints []*Endpoint
 	EpNaming  EndpointNaming
+	// ServerRename marks backends whose naming scheme (ip/pod) requires
+	// renaming the server slot when its backing endpoint changes, so the
+	// runtime name reflects the new IP:port or pod ref.  It gates the
+	// controller-side rename logic only; there is no HAProxy-side opt-in
+	// directive.  The CLI command 'set server <b>/<s> name' shipped in
+	// HAProxy 3.5-dev2 and is rejected per-server only when the server's
+	// name is statically referenced (use-server, track, sample-fetch arg)
+	// or the server is not in maintenance.  Dynamic slot servers in this
+	// controller never hit those rejection conditions.
+	ServerRename bool
 	//
 	// Paths
 	//

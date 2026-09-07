@@ -317,6 +317,7 @@ The table below describes all supported configuration keys.
 | [`backend-check-interval`](#health-check)            | time with suffix                        | Backend  | `2s`                             |
 | [`backend-protocol`](#backend-protocol)              | [h1\|h2\|h1-ssl\|h2-ssl]                | Backend  | `h1`                             |
 | [`backend-server-naming`](#backend-server-naming)    | [sequence\|ip\|pod]                     | Backend  | `sequence`                       |
+| [`backend-server-rename`](#backend-server-naming)    | [true\|false]                           | Backend  | `false`                          |
 | [`backend-server-slots-increment`](#dynamic-scaling) | number of slots                         | Backend  | `1`                              |
 | [`balance-algorithm`](#balance-algorithm)            | algorithm name                          | Backend  | `random(2)`                      |
 | [~~`bind-fronting-proxy`~~](#bind)                   | ip + port                               | Frontend |                                  |
@@ -957,12 +958,15 @@ See also:
 | Configuration key       | Scope     | Default    | Since    |
 |-------------------------|-----------|------------|----------|
 | `backend-server-naming` | `Backend` | `sequence` | `v0.8.1` |
+| `backend-server-rename` | `Backend` | `false`    | `v0.17`  |
 
 Configures how to name backend servers.
 
 * `sequence`: Names backend servers with a prefixed number sequence: `srv001`, `srv002`, and so on. This is the default configuration and the preferred option if [`dynamic-scaling`](#dynamic-scaling) is `Slots`. `seq` is an alias to `sequence`.
 * `pod`: Uses the k8s pod name as the backend server name. This option doesn't work on backends whose [`service-upstream`](#service-upstream) is `true`, falling back to `sequence`.
 * `ip`: Uses target's `<ip>:<port>` as the server name.
+
+`backend-server-rename`, when `true` and `backend-server-naming` is `ip` or `pod`, lets N42 Gateway rename a reused empty slot in place via the `set server <b>/<s> name` runtime command instead of triggering a reload, keeping the server name in sync with the workload now backing it. It defaults to `false` because the command requires HAProxy 3.5-dev2 or newer; on older versions the command is rejected and the update falls back to a reload.
 
 > [!INFO] Note
 >
