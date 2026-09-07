@@ -1,19 +1,25 @@
 baseURL: /
-title: HAProxy Ingress
+title: N42 Gateway
 
 contentDir: content/en
 disableKinds: [taxonomy,term,rss]
 enableRobotsTXT: true
 enableGitInfo: true
 
+security:
+  allowContent: ['.*'] ## TODO: still using .html in /content
+
 module:
   hugoVersion:
     extended: true
-    min: 0.110.0
+    min: 0.161.0
   imports:
   - path: github.com/google/docsy
 
 markup:
+  goldmark:
+    renderer:
+      unsafe: true
   highlight:
     # required for dark mode, fix color scheme of syntax highlight outputs
     noClasses: false
@@ -25,18 +31,20 @@ imaging:
 
 params:
   description: "Ingress controller implementation for HAProxy load balancer"
-  github_repo: https://github.com/jcmoraisjr/haproxy-ingress
+  github_repo: https://github.com/n42-gateway/n42-gateway
   github_subdir: docs
   github_branch: master
   copyright:
-    authors: The HAProxy Ingress Controller Authors
+    authors: The N42 Gateway Authors
+    trademark: HAProxy is a registered trademark of HAProxy Technologies SAS.
     from_year: 2017
     image:
-      author_name: Pete Linforth
-      author_url: "https://pixabay.com/users/TheDigitalArtist-202249/?utm_source=link-attribution&utm_medium=referral&utm_campaign=image&utm_content=3866609"
-      provider_name: Pixabay
-      provider_url: "https://pixabay.com/?utm_source=link-attribution&utm_medium=referral&utm_campaign=image&utm_content=3866609"
+      author_name: Sergei Starostin
+      author_url: "https://www.pexels.com/@sejio402/"
+      provider_name: Pexels
+      provider_url: "https://www.pexels.com/photo/grayscale-photo-of-a-circuit-board-6477212/"
   ui:
+    navbar_logo: true
     breadcrumb_disable: false
     sidebar_menu_compact: false
     sidebar_search_disable: false
@@ -58,26 +66,18 @@ params:
     url: "/v0.14/docs"
   - version: "v0.13"
     url: "/v0.13/docs"
-  - version: "v0.12"
-    url: "/v0.12/docs"
-  - version: "v0.10"
-    url: "/v0.10/docs"
   links:
     user:
     - name: "Slack"
-      url: "https://kubernetes.slack.com/channels/haproxy-ingress"
+      url: "https://kubernetes.slack.com/channels/n42-gateway"
       icon: "fab fa-slack"
-      desc: "We're in the #haproxy-ingress channel on Kubernetes Slack. Invites at https://slack.k8s.io if not subscribed."
-    - name: "Users mailing list"
-      url: "https://groups.google.com/forum/#!forum/haproxy-ingress"
+      desc: "We're in the #n42-gateway channel on Kubernetes Slack. Invites at https://slack.k8s.io if not subscribed."
+    - name: "Discussions"
+      url: "https://github.com/n42-gateway/n42-gateway/discussions"
       icon: "fa fa-envelope"
-      desc: "Announcements and discussion on a mailing list"
-    - name: "Stack Overflow"
-      url: "https://stackoverflow.com/questions/tagged/haproxy-ingress"
-      icon: "fab fa-stack-overflow"
-      desc: "Practical questions and curated answers"
+      desc: "Announcements and Q&A on GitHub Discussions"
     developer:
     - name: "GitHub"
-      url: "https://github.com/jcmoraisjr/haproxy-ingress"
+      url: "https://github.com/n42-gateway/n42-gateway"
       icon: "fab fa-github"
       desc: "Development takes place here!"

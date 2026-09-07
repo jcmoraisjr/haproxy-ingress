@@ -1,5 +1,5 @@
 {
-  "name": "haproxy-ingress-docs",
+  "name": "n42-gateway-docs",
   "scripts": {
     "clean": "rm -rf public/ resources/ node_modules/",
     "build": "npm run clean && npm i && HUGO_ENV=production hugo",

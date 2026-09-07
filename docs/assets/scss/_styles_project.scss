@@ -1,1 +1,23 @@
-@import 'td/code-dark'
+@import 'td/code-dark';
+
+@include color-mode(dark) {
+  .td-navbar .navbar-brand__logo svg {
+    fill: $white;
+  }
+}
+
+@include color-mode(light) {
+  .td-navbar .navbar-brand__logo svg {
+    fill: $black;
+  }
+}
+
+// gradient filter in the image, making it darker in the top
+.td-overlay--dark::after {
+    background: linear-gradient(to bottom, rgba(#000, 0.8) 0%, rgba(#000, 0) 100%);
+}
+
+// use $info color on [!NB] blocks
+.alert-nb {
+  @extend .alert-info;
+}
