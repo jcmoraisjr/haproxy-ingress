@@ -319,7 +319,7 @@ func (d *dynUpdater) dynamicallySyncSlots(pair *backendPair) bool {
 			}
 			updated = false
 		} else if wantRename && desiredName != empty[i].Name {
-			if !d.execRenameEndpoint(curBack.ID, empty[i].Name, added[i], desiredName) {
+			if !d.execRenameEndpoint(curBack.ID, added[i], desiredName) {
 				// rename failed; leave the slot disabled and let a reload fix it
 				updated = false
 				continue
@@ -618,28 +618,9 @@ func (d *dynUpdater) execEnableServer(backname string, ep *hatypes.Endpoint) boo
 	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdSetServerState)
 }
 
-func (d *dynUpdater) execSetNameServer(backname, oldName, newName string) bool {
-	cmd := fmt.Sprintf("set server %s/%s name %s", backname, oldName, newName)
-	d.logger.InfoV(2, "api call: %s", cmd)
-	msgs, err := d.execCommand(d.metrics.HAProxySetServerResponseTime, []string{cmd})
-	if err != nil {
-		d.logger.Error("error renaming backend server %s/%s to %s: %s", backname, oldName, newName, err.Error())
-		return false
-	}
-	msg := msgs[0]
-	if !cmdResponseOK(cmdSetServerName, msg) {
-		if msg == "" {
-			msg = "<empty>"
-		}
-		d.logger.Warn("unrecognized response renaming backend server %s/%s to %s: %s (will fall back to reload)", backname, oldName, newName, msg)
-		return false
-	}
-	if msg == "" {
-		d.logger.InfoV(2, "empty response from server")
-	} else {
-		d.logger.InfoV(2, "response from server: %s", msg)
-	}
-	return true
+func (d *dynUpdater) execSetNameServer(backname string, ep *hatypes.Endpoint, newName string) bool {
+	cmd := fmt.Sprintf("set server %s/%s name %s", backname, ep.Name, newName)
+	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdSetServerName)
 }
 
 // execClearCountersServer resets the accumulated statistics counters of a
@@ -662,35 +643,17 @@ func (d *dynUpdater) execSetNameServer(backname, oldName, newName string) bool {
 // callers treat that as a soft failure: the rename has already succeeded; the
 // only consequence is that counters remain accumulated from the previous slot
 // occupant until the next reload.
-func (d *dynUpdater) execClearCountersServer(backname, name string) bool {
-	cmd := fmt.Sprintf("clear counters server %s/%s force", backname, name)
-	d.logger.InfoV(2, "api call: %s", cmd)
-	msgs, err := d.execCommand(d.metrics.HAProxySetServerResponseTime, []string{cmd})
-	if err != nil {
-		d.logger.Warn("error clearing counters for %s/%s: %s (continuing)", backname, name, err.Error())
-		return false
-	}
-	msg := msgs[0]
-	if !cmdResponseOK(cmdClearCountersServer, msg) {
-		if msg == "" {
-			msg = "<empty>"
-		}
-		d.logger.Warn("unrecognized response clearing counters for %s/%s: %s (continuing)", backname, name, msg)
-		return false
-	}
-	if msg == "" {
-		d.logger.InfoV(2, "empty response from server")
-	} else {
-		d.logger.InfoV(2, "response from server: %s", msg)
-	}
-	return true
+func (d *dynUpdater) execClearCountersServer(backname string, ep *hatypes.Endpoint) bool {
+	cmd := fmt.Sprintf("clear counters server %s/%s force", backname, ep.Name)
+	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdClearCountersServer)
 }
 
 // execRenameEndpoint renames a previously empty slot (which must already be in
-// maintenance mode) from oldName to newName and then enables it for ep.
-// Returns true if both the rename and the enable succeeded.
-func (d *dynUpdater) execRenameEndpoint(backname, oldName string, ep *hatypes.Endpoint, newName string) bool {
-	if !d.execSetNameServer(backname, oldName, newName) {
+// maintenance mode) from its current name to newName and then enables it for
+// ep. Returns true if both the rename and the enable succeeded.
+func (d *dynUpdater) execRenameEndpoint(backname string, ep *hatypes.Endpoint, newName string) bool {
+	oldName := ep.Name
+	if !d.execSetNameServer(backname, ep, newName) {
 		return false
 	}
 	ep.Name = newName
@@ -701,7 +664,7 @@ func (d *dynUpdater) execRenameEndpoint(backname, oldName string, ep *hatypes.En
 	// Failure is non-fatal by design (the helper logs the warning
 	// internally): the rename has already committed and dirty counters are
 	// preferable to failing the update entirely.
-	d.execClearCountersServer(backname, newName)
+	_ = d.execClearCountersServer(backname, ep)
 
 	if !d.execEnableEndpoint(backname, nil, ep) || ep.Label != "" {
 		return false

@@ -158,6 +158,7 @@ const (
 	BackBackendCheckInterval   = "backend-check-interval"
 	BackBackendProtocol        = "backend-protocol"
 	BackBackendServerNaming    = "backend-server-naming"
+	BackBackendServerRename    = "backend-server-rename"
 	BackBackendServerSlotsInc  = "backend-server-slots-increment"
 	BackBalanceAlgorithm       = "balance-algorithm"
 	BackBlueGreenBalance       = "blue-green-balance"
