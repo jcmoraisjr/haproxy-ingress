@@ -623,26 +623,20 @@ func (d *dynUpdater) execSetNameServer(backname string, ep *hatypes.Endpoint, ne
 	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdSetServerName)
 }
 
-// execClearCountersServer resets the accumulated statistics counters of a
-// single server via the "clear counters server <b>/<s> force" CLI command.
-// The server must be in maintenance mode when called (same precondition as
-// "set server ... name").
+// execClearCountersServer resets a single server's statistics counters via the
+// "clear counters server <b>/<s> force" CLI command; the server must be in
+// maintenance mode (same precondition as "set server ... name").
 //
-// The "force" keyword is always appended: it is required when the server's
-// counters live in a shared-memory stats file (shm-stats-file), where the
-// command otherwise refuses to break the monotonicity that monitoring tools
-// rely on. Resetting is exactly the intent here since the slot now backs a
-// different logical entity, and "force" is harmless for servers without a
-// shm-stats-file. It needs no privilege beyond the admin-level socket the
-// command already requires.
+// The "force" keyword is required when counters live in a shared-memory stats
+// file (shm-stats-file), where the command otherwise refuses to break the
+// monotonicity monitoring tools rely on. Breaking it is the intent here since
+// the slot now backs a different logical entity, and "force" is harmless
+// without a shm-stats-file.
 //
-// Returns true on success, false on any failure (unrecognized response,
-// socket error, or an HAProxy without the command). The command first shipped
-// in HAProxy 3.5-dev4 (dev snapshot; not yet in a stable release), so on the
-// stable versions most users run this returns false and logs a warning;
-// callers treat that as a soft failure: the rename has already succeeded; the
-// only consequence is that counters remain accumulated from the previous slot
-// occupant until the next reload.
+// The command first shipped in HAProxy 3.5-dev4 (not yet in a stable release),
+// so on the versions most users run it fails; callers treat that as a soft
+// failure, leaving counters accumulated from the previous occupant until the
+// next reload.
 func (d *dynUpdater) execClearCountersServer(backname string, ep *hatypes.Endpoint) bool {
 	cmd := fmt.Sprintf("clear counters server %s/%s force", backname, ep.Name)
 	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdClearCountersServer)
@@ -659,11 +653,8 @@ func (d *dynUpdater) execRenameEndpoint(backname string, ep *hatypes.Endpoint, n
 	ep.Name = newName
 	d.logger.InfoV(2, "renamed server on backend '%s' from '%s' to '%s'", backname, oldName, newName)
 
-	// Reset counters while the server is still in maintenance mode so
-	// per-pod counter attribution starts cleanly for the new occupant.
-	// Failure is non-fatal by design (the helper logs the warning
-	// internally): the rename has already committed and dirty counters are
-	// preferable to failing the update entirely.
+	// Reset counters while still in maintenance so the new occupant starts
+	// clean; non-fatal, since the rename has already committed.
 	_ = d.execClearCountersServer(backname, ep)
 
 	if !d.execEnableEndpoint(backname, nil, ep) || ep.Label != "" {
