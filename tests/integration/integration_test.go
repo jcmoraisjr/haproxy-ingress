@@ -918,7 +918,7 @@ Request forbidden by administrative rules.
 			for _, event := range events.Items {
 				lease := event.InvolvedObject
 				t.Logf("lease: %+v message: %s", lease, event.Message)
-				if lease.Kind == "Lease" && lease.Namespace == "default" && lease.Name == "class-haproxy.n42-gateway.github.io" {
+				if lease.Kind == "Lease" && lease.Namespace == "default" && lease.Name == "class-n42.n42-gateway.github.io" {
 					assert.Regexp(collect, `became leader$`, event.Message)
 					return
 				}

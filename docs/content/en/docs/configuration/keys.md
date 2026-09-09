@@ -30,8 +30,8 @@ from Kubernetes resources.
 N42 Gateway by default does not listen to Ingress resources, until one or more of
 the following conditions are met:
 
-* Ingress resources have the annotation `kubernetes.io/ingress.class` with the value `haproxy`
-* Ingress resources have its `ingressClassName` field assigning an IngressClass resource whose `controller` name is `haproxy-ingress.github.io/controller`
+* Ingress resources have the annotation `kubernetes.io/ingress.class` with the value `n42`
+* Ingress resources have its `ingressClassName` field assigning an IngressClass resource whose `controller` name is `n42-gateway.github.io/controller`
 * N42 Gateway was started with `--watch-ingress-without-class` command-line option
 
 See [Ingress Class]({{% relref "command-line/#ingress-class" %}}) command-line doc for
@@ -138,7 +138,7 @@ kind: IngressClass
 metadata:
   name: my-class
 spec:
-  controller: haproxy-ingress.github.io/controller
+  controller: n42-gateway.github.io/controller
   parameters:
     kind: ConfigMap
     name: my-options

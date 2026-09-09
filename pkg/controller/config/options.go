@@ -11,7 +11,7 @@ import (
 func NewOptions() *Options {
 	return &Options{
 		KubeConfig:              StringValue(""),
-		IngressClass:            "haproxy",
+		IngressClass:            "n42",
 		ReloadStrategy:          "reusesocket",
 		WatchIngress:            true,
 		WatchGateway:            true,
@@ -203,9 +203,9 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 	fs.StringVar(&o.ControllerClass, "controller-class", o.ControllerClass, ""+
 		"Defines an alternative controller name this controller should listen to. If "+
 		"empty, this controller will listen to ingress resources whose controller's "+
-		"IngressClass is 'haproxy-ingress.github.io/controller'. Non-empty values add a "+
+		"IngressClass is 'n42-gateway.github.io/controller'. Non-empty values add a "+
 		"new /path, e.g., controller-class=staging will make this controller look for "+
-		"'haproxy-ingress.github.io/controller/staging'",
+		"'n42-gateway.github.io/controller/staging'",
 	)
 
 	fs.StringVar(&o.FullControllerName, "full-controller-name", o.FullControllerName, ""+

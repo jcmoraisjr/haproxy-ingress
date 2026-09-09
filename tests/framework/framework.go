@@ -724,7 +724,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    kubernetes.io/ingress.class: haproxy
+    kubernetes.io/ingress.class: n42
   name: ""
   namespace: default
 spec:
@@ -796,7 +796,7 @@ kind: GatewayClass
 metadata:
   name: ""
 spec:
-  controllerName: haproxy-ingress.github.io/controller
+  controllerName: n42-gateway.github.io/controller
 `, api)
 	name := RandomName("gc")
 

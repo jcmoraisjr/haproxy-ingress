@@ -64,9 +64,9 @@ Follow the steps below to expose the echoserver service from the [Getting Starte
     apiVersion: gateway.networking.k8s.io/v1
     kind: GatewayClass
     metadata:
-      name: haproxy
+      name: n42
     spec:
-      controllerName: haproxy-ingress.github.io/controller
+      controllerName: n42-gateway.github.io/controller
     ```
 
 ### Deploy HTTP workload
@@ -88,7 +88,7 @@ Follow the steps below to expose the echoserver service from the [Getting Starte
       name: echoserver
       namespace: default
     spec:
-      gatewayClassName: haproxy
+      gatewayClassName: n42
       listeners:
       - name: echoserver-gw
         port: 80
@@ -153,7 +153,7 @@ Follow the steps below to expose the echoserver service from the [Getting Starte
       name: redis
       namespace: default
     spec:
-      gatewayClassName: haproxy
+      gatewayClassName: n42
       listeners:
       - name: redis-gw
         port: 6379

@@ -42,7 +42,7 @@ The following command-line options are supported:
 | [`--health-check-path`](#stats)                         | path                       | `/healthz`              |       |
 | [`--healthz-addr`](#stats)                              | tcp address                | `:10254`                | v0.15 |
 | [`--healthz-port`](#stats)                              | port number                | `10254`                 |       |
-| [`--ingress-class`](#ingress-class)                     | name                       | `haproxy`               |       |
+| [`--ingress-class`](#ingress-class)                     | name                       | `n42`           |       |
 | [`--ingress-class-precedence`](#ingress-class)          | [true\|false]              | `false`                 | v0.13.5 |
 | [`--ip-mode`](#ip-mode)                                 | [v4\|v6\|v4v6\|lo\|node\|auto] | `auto`              | v0.17 |
 | [`--kubeconfig`](#kubeconfig)                           | /path/to/kubeconfig        | in cluster config       |       |
@@ -290,7 +290,7 @@ Election ID configuration has no effect if none of Address status update, Embedd
 
 Since v0.15 a `%s` placeholder is used to define where the IngressClass value should be added to the election ID. Up to v0.14 the IngressClass was concatenated in the end of the provided value to compose the real election ID value. Ingress class is added to the election ID name to avoid conflict when two or more N42 Gateway controllers are running in the same cluster.
 
-Election ID defaults to `class-%s.n42-gateway.github.io` if not configured, which is rendered to `class-haproxy.n42-gateway.github.io` if the IngressClass is not changed from the default value.
+Election ID defaults to `class-%s.n42-gateway.github.io` if not configured, which is rendered to `class-n42.n42-gateway.github.io` if the IngressClass is not changed from the default value.
 
 ---
 
@@ -356,16 +356,16 @@ These options have a new behavior since v0.12, see the corresponding documentati
 older controller version.
 
 * `--ingress-class`: defines the value of `kubernetes.io/ingress.class` annotation this controller
-should listen to. The default value is `haproxy` if not declared.
+should listen to. The default value is `n42` if not declared.
 * `--controller-class`: by default, N42 Gateway will watch IngressClasses whose
-`spec.controller` name is `haproxy-ingress.github.io/controller`. All ingress resources that
+`spec.controller` name is `n42-gateway.github.io/controller`. All ingress resources that
 link to these IngressClasses will be added to the configuration. The `--controller-class`
 command-line option customizes the controller name, allowing to run more than one N42 Gateway
 in the same cluster. Configuring `--controller-class=staging` would listen to IngressClasses whose
-controller name is `haproxy-ingress.github.io/controller/staging`.
+controller name is `n42-gateway.github.io/controller/staging`.
 * `--full-controller-name`: Same as `--controller-class`, but defines the fully qualified controller
 name instead of just its suffix. `--controller-class` is ignored if this option is configured, and
-`haproxy-ingress.github.io/controller` is used by default if both options are missing.
+`n42-gateway.github.io/controller` is used by default if both options are missing.
 * `--ingress-class-precedence`: defines if IngressClass resource should take precedence over
 kubernetes.io/ingress.class annotation if both are defined and conflicting.
 * `--watch-ingress-without-class`: defines if this controller should also listen to ingress resources

@@ -1318,7 +1318,7 @@ kind: GatewayClass
 metadata:
   name: ` + name + `
 spec:
-  controllerName: haproxy-ingress.github.io/controller`).(*gatewayv1.GatewayClass)
+  controllerName: n42-gateway.github.io/controller`).(*gatewayv1.GatewayClass)
 	c.cache.GatewayClassMap[gatewayv1.ObjectName(gwcls.Name)] = gwcls
 	return gwcls
 }
