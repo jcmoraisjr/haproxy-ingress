@@ -24,8 +24,8 @@ import (
 	api "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 
-	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
-	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
+	convtypes "github.com/n42-gateway/n42-gateway/pkg/converters/types"
+	hatypes "github.com/n42-gateway/n42-gateway/pkg/haproxy/types"
 )
 
 // FindServicePort ...
@@ -80,8 +80,8 @@ func createEndpointSlices(endpointSlices []*discoveryv1.EndpointSlice, svcPort *
 	for _, endpointSlice := range endpointSlices {
 		var loopbackEndpoint, portsAsReplicas bool
 		if ann := endpointSlice.GetAnnotations(); ann != nil {
-			loopbackEndpoint = ann["internal.haproxy-ingress.github.io/loopbackv4-endpoint"] == "1"
-			portsAsReplicas = ann["internal.haproxy-ingress.github.io/ports-as-replicas"] == "1"
+			loopbackEndpoint = ann["internal.n42-gateway.github.io/loopbackv4-endpoint"] == "1"
+			portsAsReplicas = ann["internal.n42-gateway.github.io/ports-as-replicas"] == "1"
 		}
 		for _, epPort := range endpointSlice.Ports {
 			if portsAsReplicas {

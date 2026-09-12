@@ -37,6 +37,7 @@ Catmull
 cax
 cfssl
 chaffee
+chartname
 Chaudhary
 Chitoku
 Chojnowski
@@ -297,6 +298,7 @@ mitchellh
 mkpasswd
 mkubaczyk
 Moacir
+modecfg
 modetcp
 modsec
 modsecurity

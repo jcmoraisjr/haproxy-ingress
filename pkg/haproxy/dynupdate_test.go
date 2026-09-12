@@ -24,7 +24,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
+	"github.com/n42-gateway/n42-gateway/pkg/haproxy/types"
 )
 
 func TestDynUpdate(t *testing.T) {

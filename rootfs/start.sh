@@ -30,5 +30,5 @@ EOF
 else
     # Copy static files to /etc/haproxy, which cannot have static content
     cp -R /etc/lua /etc/haproxy/ 
-    exec /haproxy-ingress-controller "$@"
+    exec /n42-gateway-controller "$@"
 fi

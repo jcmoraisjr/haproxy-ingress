@@ -24,10 +24,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
-	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
+	ingtypes "github.com/n42-gateway/n42-gateway/pkg/converters/ingress/types"
+	"github.com/n42-gateway/n42-gateway/pkg/converters/types"
+	"github.com/n42-gateway/n42-gateway/pkg/haproxy"
+	hatypes "github.com/n42-gateway/n42-gateway/pkg/haproxy/types"
 )
 
 func TestFrontendLocalConfig(t *testing.T) {

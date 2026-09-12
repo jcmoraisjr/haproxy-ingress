@@ -22,7 +22,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
+	"github.com/n42-gateway/n42-gateway/pkg/haproxy"
 )
 
 type svcCalcIdle struct {

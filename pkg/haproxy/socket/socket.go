@@ -30,7 +30,7 @@ import (
 
 	k8snet "k8s.io/apimachinery/pkg/util/net"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
+	"github.com/n42-gateway/n42-gateway/pkg/utils"
 )
 
 // NewSocket ...

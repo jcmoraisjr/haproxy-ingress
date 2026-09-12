@@ -49,17 +49,17 @@ import (
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
-	ctrlconfig "github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/launch"
-	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/socket"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
-	"github.com/jcmoraisjr/haproxy-ingress/tests/framework/options"
+	ctrlconfig "github.com/n42-gateway/n42-gateway/pkg/controller/config"
+	"github.com/n42-gateway/n42-gateway/pkg/controller/launch"
+	ingtypes "github.com/n42-gateway/n42-gateway/pkg/converters/ingress/types"
+	"github.com/n42-gateway/n42-gateway/pkg/haproxy/socket"
+	"github.com/n42-gateway/n42-gateway/pkg/utils"
+	"github.com/n42-gateway/n42-gateway/tests/framework/options"
 )
 
 const (
-	AnnotationPrefix = "haproxy-ingress.github.io/"
-	LocalFSPrefix    = "/tmp/haproxy-ingress"
+	AnnotationPrefix = "n42-gateway.github.io/"
+	LocalFSPrefix    = "/tmp/n42-gateway"
 
 	PublishSvcName  = "default/publish"
 	PublishAddress  = "10.0.1.1"
@@ -75,7 +75,7 @@ const (
 )
 
 var (
-	GlobalConfigMap = types.NamespacedName{Namespace: "default", Name: "ingress-controller"}
+	GlobalConfigMap = types.NamespacedName{Namespace: "default", Name: "n42-gateway"}
 
 	FrontLocal1Name  = "FrontLocal1"
 	FrontLocal1HTTP  = RandomPort()
@@ -234,7 +234,7 @@ func (f *framework) StartController(ctx context.Context, t *testing.T) {
 
 	opt := ctrlconfig.NewOptions()
 	opt.MasterWorker = true
-	opt.LocalFSPrefix = "/tmp/haproxy-ingress"
+	opt.LocalFSPrefix = LocalFSPrefix
 	opt.PublishService = PublishSvcName
 	opt.ConfigMap = GlobalConfigMap.String()
 	// Our Request() method and EndpointSlice configuration currently uses IPv4 address only
@@ -272,7 +272,7 @@ func (f *framework) StartController(ctx context.Context, t *testing.T) {
 		assert.NoError(collect, err)
 	}, CommonTimeout, CommonInterval)
 
-	f.admSock = socket.NewSocket(ctx, "/tmp/haproxy-ingress/var/run/haproxy/admin.sock", CommonTimeout, false)
+	f.admSock = socket.NewSocket(ctx, LocalFSPrefix+"/var/run/haproxy/admin.sock", CommonTimeout, false)
 }
 
 type Response struct {
@@ -689,9 +689,9 @@ ports: []
 	eps := f.CreateObject(t, data).(*discoveryv1.EndpointSlice)
 	eps.GenerateName = svc.Name + "-"
 	if portsAsReplicas {
-		eps.Annotations["internal.haproxy-ingress.github.io/ports-as-replicas"] = "1"
+		eps.Annotations["internal.n42-gateway.github.io/ports-as-replicas"] = "1"
 	} else {
-		eps.Annotations["internal.haproxy-ingress.github.io/loopbackv4-endpoint"] = "1"
+		eps.Annotations["internal.n42-gateway.github.io/loopbackv4-endpoint"] = "1"
 	}
 	eps.Labels["kubernetes.io/service-name"] = svc.Name
 	for _, svcport := range svc.Spec.Ports {
@@ -724,7 +724,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    kubernetes.io/ingress.class: haproxy
+    kubernetes.io/ingress.class: n42
   name: ""
   namespace: default
 spec:
@@ -796,7 +796,7 @@ kind: GatewayClass
 metadata:
   name: ""
 spec:
-  controllerName: haproxy-ingress.github.io/controller
+  controllerName: n42-gateway.github.io/controller
 `, api)
 	name := RandomName("gc")
 

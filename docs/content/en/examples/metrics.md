@@ -92,9 +92,9 @@ There are two important configurations in the snippet above:
 
 Now install or upgrade the chart:
 ```
-helm upgrade haproxy-ingress haproxy-ingress/haproxy-ingress\
+helm upgrade n42 n42/n42-gateway\
   --install\
-  --create-namespace --namespace ingress-controller\
+  --create-namespace --namespace n42-gateway-system\
   -f n42-gateway-values.yaml
 ```
 
@@ -122,7 +122,7 @@ controller:
 ## Configure the dashboard
 
 Import [this](https://grafana.com/grafana/dashboards/12056) Grafana dashboard. If Grafana was deployed using the steps provided in this walkthrough:
-> Minimum N42 Gateway version is v0.14, use revision 3 if using on an older one.
+> Minimum N42 Gateway version is `v0.17.0-alpha.3`, use revision 4 if using on an older one.
 
 * Open Grafana page - the URL is the same provided in the `prometheus-operator-values.yaml` file and should resolve to the ingress deployment
 * Log in to Grafana, the `prometheus-operator-values.yaml` file configures user as `admin` and the password as `prom-operator`
@@ -147,7 +147,7 @@ kubectl --namespace default scale deploy dory --replicas=4
 kubectl --namespace default expose deploy dory --port 8000
 kubectl --namespace default create ingress dory\
   --class=haproxy\
-  --annotation haproxy-ingress.github.io/ssl-redirect=false\
+  --annotation n42-gateway.github.io/ssl-redirect=false\
   --rule="dory.localdomain/*=dory:8000,tls=dory"
 ```
 

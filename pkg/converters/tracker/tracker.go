@@ -20,7 +20,7 @@ import (
 	"slices"
 	"sort"
 
-	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
+	convtypes "github.com/n42-gateway/n42-gateway/pkg/converters/types"
 )
 
 // NewTracker ...

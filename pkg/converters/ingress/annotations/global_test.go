@@ -25,9 +25,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
-	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
-	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
+	ingtypes "github.com/n42-gateway/n42-gateway/pkg/converters/ingress/types"
+	convtypes "github.com/n42-gateway/n42-gateway/pkg/converters/types"
+	hatypes "github.com/n42-gateway/n42-gateway/pkg/haproxy/types"
 )
 
 func TestAuthProxy(t *testing.T) {

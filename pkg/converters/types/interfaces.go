@@ -28,7 +28,7 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
-	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
+	hatypes "github.com/n42-gateway/n42-gateway/pkg/haproxy/types"
 )
 
 // Cache ...

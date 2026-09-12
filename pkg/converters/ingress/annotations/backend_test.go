@@ -27,10 +27,10 @@ import (
 	api "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	conv_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/helper_test"
-	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
-	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
+	conv_helper "github.com/n42-gateway/n42-gateway/pkg/converters/helper_test"
+	ingtypes "github.com/n42-gateway/n42-gateway/pkg/converters/ingress/types"
+	"github.com/n42-gateway/n42-gateway/pkg/converters/types"
+	hatypes "github.com/n42-gateway/n42-gateway/pkg/haproxy/types"
 )
 
 func TestAffinity(t *testing.T) {

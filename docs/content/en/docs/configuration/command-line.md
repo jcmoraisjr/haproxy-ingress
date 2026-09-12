@@ -19,7 +19,7 @@ The following command-line options are supported:
 | [`--acme-token-configmap-name`](#acme)                  | [namespace]/configmap-name | `acme-validation-tokens` | v0.9 |
 | [`--acme-track-tls-annotation`](#acme)                  | [true\|false]              | `false`                 | v0.9  |
 | [`--allow-cross-namespace`](#allow-cross-namespace)     | [true\|false]              | `false`                 |       |
-| [`--annotations-prefix`](#annotations-prefix)           | prefix list without `/`    | `haproxy-ingress.github.io,ingress.kubernetes.io` | v0.8  |
+| [`--annotations-prefix`](#annotations-prefix)           | prefix list without `/`    | `n42-gateway.github.io,`<br/>`haproxy-ingress.github.io,`<br/>`ingress.kubernetes.io` | v0.8  |
 | [`--apiserver-host`](#apiserver-host)                   | address of K8s API server  |                         |       |
 | [`--backend-shards`](#backend-shards)                   | int                        | `0`                     | v0.11 |
 | [`--buckets-response-time`](#buckets-response-time)     | float64 slice           | `.0005,.001,.002,.005,.01` | v0.10 |
@@ -34,7 +34,7 @@ The following command-line options are supported:
 | [`--disable-external-name`](#disable-external-name)     | [true\|false]              | `false`                 | v0.10 |
 | [`--disable-ingress-class-api`](#ingress-class)         | [true\|false]              | `false`                 | v0.16 |
 | [`--disable-pod-list`](#disable-pod-list)               | [true\|false]              | `false`                 | v0.11 |
-| [`--election-id`](#election-id)                         | identifier                 | `ingress-controller-leader` |   |
+| [`--election-id`](#election-id)                         | identifier                 | `class-%s.n42-gateway.github.io` |   |
 | [`--enable-endpointslices-api`](#enable-endpointslices-api) | [true\|false]          | `true`                  | v0.14 |
 | [`--force-namespace-isolation`](#force-namespace-isolation) | [true\|false]          | `false`                 |       |
 | [`--full-controller-name`](#ingress-class)              | fully qualified name       |                         | v0.17 |
@@ -42,7 +42,7 @@ The following command-line options are supported:
 | [`--health-check-path`](#stats)                         | path                       | `/healthz`              |       |
 | [`--healthz-addr`](#stats)                              | tcp address                | `:10254`                | v0.15 |
 | [`--healthz-port`](#stats)                              | port number                | `10254`                 |       |
-| [`--ingress-class`](#ingress-class)                     | name                       | `haproxy`               |       |
+| [`--ingress-class`](#ingress-class)                     | name                       | `n42`           |       |
 | [`--ingress-class-precedence`](#ingress-class)          | [true\|false]              | `false`                 | v0.13.5 |
 | [`--ip-mode`](#ip-mode)                                 | [v4\|v6\|v4v6\|lo\|node\|auto] | `auto`              | v0.17 |
 | [`--kubeconfig`](#kubeconfig)                           | /path/to/kubeconfig        | in cluster config       |       |
@@ -118,7 +118,7 @@ See also:
 
 `--allow-cross-namespace` argument, if added, will allow reading secrets from one namespace to an
 ingress resource of another namespace. The default behavior is to deny such cross namespace reading.
-This adds a breaking change from `v0.4` to `v0.5` on `haproxy-ingress.github.io/auth-tls-secret`
+This adds a breaking change from `v0.4` to `v0.5` on `n42-gateway.github.io/auth-tls-secret`
 annotation, where cross namespace reading were allowed without any configuration.
 
 See also:
@@ -132,9 +132,12 @@ See also:
 * `--annotations-prefix`
 
 Configures a comma-separated list of annotations prefix that the controller should look for when
-parsing services and ingress objects. The default value is `haproxy-ingress.github.io,ingress.kubernetes.io`.
-The default configuration means declare eg a SSL Redirect annotation with
-`haproxy-ingress.github.io/ssl-redirect: "true"` or `ingress.kubernetes.io/ssl-redirect: "true"`.
+parsing services and ingress objects. The default value is `n42-gateway.github.io,haproxy-ingress.github.io,ingress.kubernetes.io`.
+The default configuration means that any of the following configurations will declare SSL Redirect as `true`:
+
+* `n42-gateway.github.io/ssl-redirect: "true"`
+* `haproxy-ingress.github.io/ssl-redirect: "true"`
+* `ingress.kubernetes.io/ssl-redirect: "true"`
 
 The order of the declaration is used to prioritize one of them if the same configuration key is
 declared twice - if two distinct prefix is used to configure the same key in the same ingress or
@@ -174,7 +177,7 @@ services.
 
 * `--buckets-response-time`
 
-Configures the buckets of the histogram `haproxyingress_haproxy_response_time_seconds`, used to compute the response time of the haproxy's admin socket. The response time unit is in seconds. The default value is `.0005,.001,.002,.005,.01` (`500µs`, `1ms`, `2ms`, `5ms`, `10ms`) if not configured.
+Configures the buckets of the histogram `n42gateway_haproxy_response_time_seconds`, used to compute the response time of the haproxy's admin socket. The response time unit is in seconds. The default value is `.0005,.001,.002,.005,.01` (`500µs`, `1ms`, `2ms`, `5ms`, `10ms`) if not configured.
 
 ---
 
@@ -287,7 +290,7 @@ Election ID configuration has no effect if none of Address status update, Embedd
 
 Since v0.15 a `%s` placeholder is used to define where the IngressClass value should be added to the election ID. Up to v0.14 the IngressClass was concatenated in the end of the provided value to compose the real election ID value. Ingress class is added to the election ID name to avoid conflict when two or more N42 Gateway controllers are running in the same cluster.
 
-Election ID defaults to `class-%s.haproxy-ingress.github.io` if not configured, which is rendered to `class-haproxy.haproxy-ingress.github.io` if the IngressClass is not changed from the default value.
+Election ID defaults to `class-%s.n42-gateway.github.io` if not configured, which is rendered to `class-n42.n42-gateway.github.io` if the IngressClass is not changed from the default value.
 
 ---
 
@@ -353,16 +356,16 @@ These options have a new behavior since v0.12, see the corresponding documentati
 older controller version.
 
 * `--ingress-class`: defines the value of `kubernetes.io/ingress.class` annotation this controller
-should listen to. The default value is `haproxy` if not declared.
+should listen to. The default value is `n42` if not declared.
 * `--controller-class`: by default, N42 Gateway will watch IngressClasses whose
-`spec.controller` name is `haproxy-ingress.github.io/controller`. All ingress resources that
+`spec.controller` name is `n42-gateway.github.io/controller`. All ingress resources that
 link to these IngressClasses will be added to the configuration. The `--controller-class`
 command-line option customizes the controller name, allowing to run more than one N42 Gateway
 in the same cluster. Configuring `--controller-class=staging` would listen to IngressClasses whose
-controller name is `haproxy-ingress.github.io/controller/staging`.
+controller name is `n42-gateway.github.io/controller/staging`.
 * `--full-controller-name`: Same as `--controller-class`, but defines the fully qualified controller
 name instead of just its suffix. `--controller-class` is ignored if this option is configured, and
-`haproxy-ingress.github.io/controller` is used by default if both options are missing.
+`n42-gateway.github.io/controller` is used by default if both options are missing.
 * `--ingress-class-precedence`: defines if IngressClass resource should take precedence over
 kubernetes.io/ingress.class annotation if both are defined and conflicting.
 * `--watch-ingress-without-class`: defines if this controller should also listen to ingress resources
@@ -828,7 +831,7 @@ applied. Default value is `false`, which means the validation will only happen w
 be reloaded.
 
 If validation fails, N42 Gateway will log the error and set the metric
-`haproxyingress_update_success` to zero, indicating failure.
+`n42gateway_update_success` to zero, indicating failure.
 
 ---
 

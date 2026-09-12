@@ -15,12 +15,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/jcmoraisjr/haproxy-ingress/tests/framework/options"
+	"github.com/n42-gateway/n42-gateway/tests/framework/options"
 )
 
 const (
-	CertificateIssuerCN = "HAProxy Ingress issuer"
-	CertificateClientCN = "HAProxy Ingress client"
+	CertificateIssuerCN = "N42 Gateway issuer"
+	CertificateClientCN = "N42 Gateway client"
 )
 
 func TLSConnection(collect assert.TestingT, host string, port int32) *tls.Conn {

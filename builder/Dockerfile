@@ -29,15 +29,15 @@ COPY . .
 RUN GIT_TAG=${GIT_TAG:-latest}\
  && GIT_COMMIT=git-$(git rev-parse --short HEAD)\
  && GIT_REPO=$(git config --get remote.origin.url)\
- && VERSION_PKG=github.com/jcmoraisjr/haproxy-ingress/pkg/version\
+ && VERSION_PKG=github.com/n42-gateway/n42-gateway/pkg/version\
  && echo "-X ${VERSION_PKG}.RELEASE=${GIT_TAG} -X ${VERSION_PKG}.COMMIT=${GIT_COMMIT} -X ${VERSION_PKG}.REPO=${GIT_REPO}" > /x-args
 
 FROM --platform=$BUILDPLATFORM builder-common AS builder
 ARG TARGETPLATFORM
 RUN CGO_ENABLED=0 xx-go build\
     -ldflags "-s -w $(cat /x-args)"\
-    -o haproxy-ingress pkg/main.go\
- && xx-verify haproxy-ingress
+    -o n42-gateway pkg/main.go\
+ && xx-verify n42-gateway
 
 FROM haproxy:3.0.23-alpine
 
@@ -46,7 +46,7 @@ USER root
 RUN apk upgrade --no-cache && apk --no-cache add libcap-utils socat openssl lua5.3 lua-json4 dumb-init
 
 COPY rootfs/ /
-COPY --from=builder /src/haproxy-ingress /haproxy-ingress-controller
+COPY --from=builder /src/n42-gateway /n42-gateway-controller
 
 RUN mkdir -p /var/empty /etc/haproxy /var/lib/haproxy /var/run/haproxy\
  && chown -R haproxy:haproxy /etc/haproxy /var/lib/haproxy /var/run/haproxy\

@@ -1,14 +1,14 @@
 ---
 name: Bug report
-about: Report a problem with HAProxy Ingress.
+about: Report a problem with N42 Gateway.
 labels: 'kind/bug, status/needs-triage'
 ---
 
 <!--
-Welcome to HAProxy Ingress and thank you for contributing to the project!
+Welcome to N42 Gateway and thank you for contributing to the project!
 
 Please fill and submit this issue only if you have a problem running
-HAProxy Ingress. Use Slack, mailing list or Stack Overflow instead if
+N42 Gateway. Use Slack or GitHub Discussions instead if
 you need support or if you are in doubt if you found a bug.
 -->
 
@@ -30,9 +30,9 @@ you need support or if you are in doubt if you found a bug.
 
 **Environment information**
 
-<!-- Edit v0.xx below with the version of your HAProxy Ingress -->
+<!-- Edit v0.xx below with the version of your N42 Gateway -->
 
-HAProxy Ingress version: `v0.xx`
+N42 Gateway version: `v0.xx`
 
 <!-- Put the actual configuration inside code blocks ``` -->
 

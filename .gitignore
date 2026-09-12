@@ -1,6 +1,6 @@
 .vscode
 bin
-rootfs/haproxy-ingress-controller
+rootfs/n42-gateway-controller
 
 # IntelliJ
 .idea/

@@ -11,7 +11,7 @@ import (
 func NewOptions() *Options {
 	return &Options{
 		KubeConfig:              StringValue(""),
-		IngressClass:            "haproxy",
+		IngressClass:            "n42",
 		ReloadStrategy:          "reusesocket",
 		WatchIngress:            true,
 		WatchGateway:            true,
@@ -23,8 +23,9 @@ func NewOptions() *Options {
 		AcmeSecretKeyName:       "acme-private-key",
 		AcmeTokenConfigMapName:  "acme-validation-tokens",
 		BucketsResponseTime:     []float64{.0005, .001, .002, .005, .01},
+		MetricsNamespace:        "n42gateway",
 		IPMode:                  "auto",
-		AnnPrefix:               "haproxy-ingress.github.io,ingress.kubernetes.io",
+		AnnPrefix:               "n42-gateway.github.io,haproxy-ingress.github.io,ingress.kubernetes.io",
 		RateLimitUpdate:         0.5,
 		WaitBeforeUpdate:        200 * time.Millisecond,
 		ReloadRetry:             30 * time.Second,
@@ -37,7 +38,7 @@ func NewOptions() *Options {
 		Profiling:               true,
 		VerifyHostname:          true,
 		UpdateStatus:            true,
-		ElectionID:              "class-%s.haproxy-ingress.github.io",
+		ElectionID:              "class-%s.n42-gateway.github.io",
 		ShutdownTimeout:         25 * time.Second,
 		HAProxyGracePeriod:      20 * time.Second,
 		UpdateStatusOnShutdown:  true,
@@ -76,6 +77,7 @@ type Options struct {
 	AcmeTokenConfigMapName   string
 	AcmeTrackTLSAnn          bool
 	BucketsResponseTime      []float64
+	MetricsNamespace         string
 	PublishService           string
 	PublishAddress           string
 	IPMode                   string
@@ -151,7 +153,7 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 	)
 
 	fs.StringVar(&o.LocalFSPrefix, "local-filesystem-prefix", o.LocalFSPrefix, ""+
-		"Defines the prefix of a temporary directory HAProxy Ingress should create and "+
+		"Defines the prefix of a temporary directory N42 Gateway should create and "+
 		"maintain all the configuration files. Useful for local deployment.",
 	)
 
@@ -194,16 +196,16 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 		"Define if the resulting configuration files should be validated when a dynamic "+
 		"update was applied. Default value is false, which means the validation will "+
 		"only happen when HAProxy needs to be reloaded. If validation fails, HAProxy "+
-		"Ingress will log the error and set the metric 'haproxyingress_update_success' "+
+		"Ingress will log the error and set the metric 'n42gateway_update_success' "+
 		"as failed (zero)",
 	)
 
 	fs.StringVar(&o.ControllerClass, "controller-class", o.ControllerClass, ""+
 		"Defines an alternative controller name this controller should listen to. If "+
 		"empty, this controller will listen to ingress resources whose controller's "+
-		"IngressClass is 'haproxy-ingress.github.io/controller'. Non-empty values add a "+
+		"IngressClass is 'n42-gateway.github.io/controller'. Non-empty values add a "+
 		"new /path, e.g., controller-class=staging will make this controller look for "+
-		"'haproxy-ingress.github.io/controller/staging'",
+		"'n42-gateway.github.io/controller/staging'",
 	)
 
 	fs.StringVar(&o.FullControllerName, "full-controller-name", o.FullControllerName, ""+
@@ -247,7 +249,7 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 	)
 
 	fs.DurationVar(&o.ConnectionTimeout, "connection-timeout", o.ConnectionTimeout, ""+
-		"Defines the maximum amount of time HAProxy Ingress should wait for HAProxy "+
+		"Defines the maximum amount of time N42 Gateway should wait for HAProxy "+
 		"responses when connecting to its master or admin sockets.",
 	)
 
@@ -294,6 +296,9 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 		"the haproxy's admin socket. The response time unit is in seconds.",
 	)
 
+	fs.StringVar(&o.MetricsNamespace, "metrics-namespace", o.MetricsNamespace, ""+
+		"")
+
 	fs.StringVar(&o.PublishService, "publish-service", o.PublishService, ""+
 		"Service fronting the ingress controllers. Takes the form namespace/name. The "+
 		"controller will set the endpoint records on the ingress objects to reflect "+
@@ -339,7 +344,7 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 	)
 
 	fs.DurationVar(&o.ReloadRetry, "reload-retry", o.ReloadRetry, ""+
-		"How long HAProxy Ingress should wait before trying to reload HAProxy if an error "+
+		"How long N42 Gateway should wait before trying to reload HAProxy if an error "+
 		"happens.")
 
 	fs.DurationVar(&o.WaitBeforeUpdate, "wait-before-update", o.WaitBeforeUpdate, ""+
@@ -420,7 +425,7 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 
 	fs.DurationVar(&o.HAProxyGracePeriod, "haproxy-grace-period", o.HAProxyGracePeriod, ""+
 		"Configures the amount of time HAProxy should wait for all the active connections "+
-		"to finish, after HAProxy Ingress receives the signal from Kubernetes to "+
+		"to finish, after N42 Gateway receives the signal from Kubernetes to "+
 		"terminate. This option is only used on embedded HAProxy configured as "+
 		"master-worker.",
 	)
@@ -524,7 +529,7 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 	)
 
 	fs.BoolVar(&o.DisablePodList, "disable-pod-list", o.DisablePodList, ""+
-		"DEPRECATED: used to define if HAProxy Ingress should disable pod watch and in "+
+		"DEPRECATED: used to define if N42 Gateway should disable pod watch and in "+
 		"memory list. This configuration is now ignored, controller-runtime takes care "+
 		"of it.",
 	)

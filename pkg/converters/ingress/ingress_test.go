@@ -36,14 +36,14 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/ptr"
 
-	conv_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/helper_test"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/annotations"
-	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/tracker"
-	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
-	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
-	types_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/types/helper_test"
+	conv_helper "github.com/n42-gateway/n42-gateway/pkg/converters/helper_test"
+	"github.com/n42-gateway/n42-gateway/pkg/converters/ingress/annotations"
+	ingtypes "github.com/n42-gateway/n42-gateway/pkg/converters/ingress/types"
+	"github.com/n42-gateway/n42-gateway/pkg/converters/tracker"
+	convtypes "github.com/n42-gateway/n42-gateway/pkg/converters/types"
+	"github.com/n42-gateway/n42-gateway/pkg/haproxy"
+	hatypes "github.com/n42-gateway/n42-gateway/pkg/haproxy/types"
+	types_helper "github.com/n42-gateway/n42-gateway/pkg/types/helper_test"
 )
 
 const (
@@ -744,7 +744,7 @@ func TestSyncIngressClass(t *testing.T) {
 				Kind: "ConfigMap",
 				Name: "none",
 			},
-			logging: `WARN error reading ConfigMap on IngressClass 'haproxy-config': configmap not found: ingress-controller/none`,
+			logging: `WARN error reading ConfigMap on IngressClass 'haproxy-config': configmap not found: n42-gateway-system/none`,
 		},
 		// 3
 		{
@@ -757,7 +757,7 @@ func TestSyncIngressClass(t *testing.T) {
 	}
 	for _, test := range testCases {
 		c := setup(t)
-		c.cache.ConfigMapList = map[string]*api.ConfigMap{"ingress-controller/config": {}}
+		c.cache.ConfigMapList = map[string]*api.ConfigMap{"n42-gateway-system/config": {}}
 		c.cache.SecretTLSPath["system/default"] = "/tls/tls-default.pem"
 		conv := c.createConverter()
 		ingClass := networking.IngressClass{
@@ -1993,20 +1993,21 @@ func TestAnnPrefix(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
-	prefix1 := "haproxy-ingress.github.io"
-	prefix2 := "ingress.kubernetes.io"
-	prefix3 := "haproxy"
+	prefix1 := "n42-gateway.github.io"
+	prefix2 := "haproxy-ingress.github.io"
+	prefix3 := "ingress.kubernetes.io"
+	prefix4 := "haproxy"
 
 	c.cache.SecretTLSPath["system/default"] = "/tls/tls-default.pem"
 	conv := c.createConverter()
-	conv.options.AnnotationPrefix = []string{prefix1, prefix2, prefix3}
+	conv.options.AnnotationPrefix = []string{prefix1, prefix2, prefix3, prefix4}
 
 	c.createSvc1Auto()
 	c.SyncConverter(
 		conv,
 		c.createIng1Ann("default/app1", "app.local", "/", "echo:8080", map[string]string{
-			prefix3 + "/" + ingtypes.HostAppRoot:          "true",
-			prefix2 + "/" + ingtypes.BackBalanceAlgorithm: "leastconn",
+			prefix4 + "/" + ingtypes.HostAppRoot:          "true",
+			prefix3 + "/" + ingtypes.BackBalanceAlgorithm: "leastconn",
 			prefix1 + "/" + ingtypes.BackBalanceAlgorithm: "random",
 			prefix3 + "/" + ingtypes.BackMaxconnServer:    "1000",
 			prefix2 + "/" + ingtypes.BackMaxconnServer:    "1000",

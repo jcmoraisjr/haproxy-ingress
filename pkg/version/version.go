@@ -23,7 +23,7 @@ type Info struct {
 
 var (
 	// NAME Name of the controller
-	NAME = "HAProxy Ingress"
+	NAME = "N42 Gateway"
 	// RELEASE Release version
 	RELEASE = "UNKNOWN"
 	// COMMIT Short sha from git commit

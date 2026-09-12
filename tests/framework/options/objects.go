@@ -13,7 +13,7 @@ func AddConfigKeyAnnotation(key, value string) Object {
 		if o.Ann == nil {
 			o.Ann = make(map[string]string)
 		}
-		annprefix := "haproxy-ingress.github.io/"
+		annprefix := "n42-gateway.github.io/"
 		o.Ann[annprefix+key] = value
 	}
 }

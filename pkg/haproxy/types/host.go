@@ -21,7 +21,7 @@ import (
 
 	"k8s.io/utils/ptr"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
+	"github.com/n42-gateway/n42-gateway/pkg/utils"
 )
 
 // FindPath ...

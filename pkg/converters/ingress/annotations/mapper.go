@@ -21,9 +21,9 @@ import (
 	"strconv"
 	"strings"
 
-	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
-	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
+	convtypes "github.com/n42-gateway/n42-gateway/pkg/converters/types"
+	hatypes "github.com/n42-gateway/n42-gateway/pkg/haproxy/types"
+	"github.com/n42-gateway/n42-gateway/pkg/types"
 )
 
 type ConfigValueGetter interface {

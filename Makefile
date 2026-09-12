@@ -5,10 +5,10 @@ GOOS=linux
 GOARCH?=$(shell go env GOARCH)
 GIT_REPO=$(shell git config --get remote.origin.url)
 GIT_COMMIT=git-$(shell git rev-parse --short HEAD)
-VERSION_PKG=github.com/jcmoraisjr/haproxy-ingress/pkg/version
+VERSION_PKG=github.com/n42-gateway/n42-gateway/pkg/version
 CONTROLLER_FLAGS=-X $(VERSION_PKG).RELEASE=local -X $(VERSION_PKG).COMMIT=$(GIT_COMMIT) -X $(VERSION_PKG).REPO=$(GIT_REPO)
-CONTROLLER_TAG?=localhost/haproxy-ingress:latest
-LOCAL_FS_PREFIX?=/tmp/haproxy-ingress
+CONTROLLER_TAG?=localhost/n42-gateway:latest
+LOCAL_FS_PREFIX?=/tmp/n42-gateway
 KUBECONFIG?=$(HOME)/.kube/config
 CONTROLLER_CONFIGMAP?=
 CONTROLLER_ARGS?=
@@ -77,7 +77,7 @@ linux-build:
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build \
 	  -v -installsuffix cgo \
 	  -ldflags "-s -w $(CONTROLLER_FLAGS)" \
-	  -o rootfs/haproxy-ingress-controller pkg/main.go
+	  -o rootfs/n42-gateway-controller pkg/main.go
 
 .PHONY: image
 image: linux-build
@@ -85,5 +85,4 @@ image: linux-build
 
 .PHONY: docker-build
 docker-build:
-	@rm -f rootfs/haproxy-ingress-controller
-	docker build -t $(CONTROLLER_TAG) . -f builder/Dockerfile
+	docker-buildx build -t $(CONTROLLER_TAG) . -f builder/Dockerfile

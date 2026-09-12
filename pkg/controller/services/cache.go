@@ -41,9 +41,9 @@ import (
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
-	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
+	"github.com/n42-gateway/n42-gateway/pkg/acme"
+	"github.com/n42-gateway/n42-gateway/pkg/controller/config"
+	convtypes "github.com/n42-gateway/n42-gateway/pkg/converters/types"
 )
 
 func createCacheFacade(ctx context.Context, client client.Client, config *config.Config, tracker convtypes.Tracker, sslCerts *SSL, dynconfig *convtypes.DynamicConfig, svcleader *svcLeader) *c {

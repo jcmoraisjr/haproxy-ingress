@@ -25,15 +25,15 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/tracker"
-	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
-	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils/workqueue"
+	"github.com/n42-gateway/n42-gateway/pkg/acme"
+	"github.com/n42-gateway/n42-gateway/pkg/controller/config"
+	"github.com/n42-gateway/n42-gateway/pkg/converters"
+	"github.com/n42-gateway/n42-gateway/pkg/converters/tracker"
+	convtypes "github.com/n42-gateway/n42-gateway/pkg/converters/types"
+	"github.com/n42-gateway/n42-gateway/pkg/haproxy"
+	hatypes "github.com/n42-gateway/n42-gateway/pkg/haproxy/types"
+	"github.com/n42-gateway/n42-gateway/pkg/utils"
+	"github.com/n42-gateway/n42-gateway/pkg/utils/workqueue"
 )
 
 // Services ...
@@ -100,7 +100,7 @@ func (s *Services) setup(ctx context.Context) error {
 		reloadQueue = workqueue.New(s.reloadHAProxy, workqueue.ReloadHAProxyRateLimiter(cfg.ReloadInterval))
 	}
 	tracker := tracker.NewTracker()
-	metrics := createMetrics(cfg.BucketsResponseTime)
+	metrics := createMetrics(cfg.MetricsNamespace, cfg.BucketsResponseTime)
 	svcleader, err := initSvcLeader(ctx, cfg)
 	if err != nil {
 		return err

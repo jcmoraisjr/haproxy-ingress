@@ -55,8 +55,8 @@ import (
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/version"
+	"github.com/n42-gateway/n42-gateway/pkg/utils"
+	"github.com/n42-gateway/n42-gateway/pkg/version"
 )
 
 // Create ...
@@ -194,7 +194,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 
 	rootcontext := logr.NewContext(createRootContext(ctx, rootLogger, waitShutdown), rootLogger)
 
-	controllerName := "haproxy-ingress.github.io/controller"
+	controllerName := "n42-gateway.github.io/controller"
 	if opt.FullControllerName != "" {
 		controllerName = opt.FullControllerName
 	} else if opt.ControllerClass != "" {
@@ -600,6 +600,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		MasterSocket:             opt.MasterSocket,
 		MasterWorker:             masterWorkerCfg,
 		MaxOldConfigFiles:        opt.MaxOldConfigFiles,
+		MetricsNamespace:         opt.MetricsNamespace,
 		Profiling:                opt.Profiling,
 		PublishAddressHostnames:  publishAddressHostnames,
 		PublishAddressIPs:        publishAddressIPs,
@@ -924,6 +925,7 @@ type Config struct {
 	MasterSocket             string
 	MasterWorker             bool
 	MaxOldConfigFiles        int
+	MetricsNamespace         string
 	Profiling                bool
 	PublishAddressHostnames  []string
 	PublishAddressIPs        []string

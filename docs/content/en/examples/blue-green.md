@@ -17,9 +17,7 @@ deployment groups as well as selecting a group based on http header or cookie va
 
 This document has the following prerequisite:
 
-* A Kubernetes cluster with a running N42 Gateway controller v0.6 or above.
-See the [five minutes deployment](https://github.com/n42-gateway/n42-gateway/tree/master/examples/setup-cluster.md#five-minutes-deployment)
-or the [deployment example](https://github.com/n42-gateway/n42-gateway/tree/master/examples/deployment)
+* A Kubernetes cluster with a running N42 Gateway controller. See the [Getting Started guide]({{% relref "/docs/getting-started#installation" %}})
 
 ## Deploying applications
 
@@ -85,10 +83,10 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    haproxy-ingress.github.io/balance-algorithm: roundrobin
-    haproxy-ingress.github.io/blue-green-deploy: group=blue=1,group=green=1
-    haproxy-ingress.github.io/blue-green-mode: pod
-    haproxy-ingress.github.io/ssl-redirect: "false"
+    n42-gateway.github.io/balance-algorithm: roundrobin
+    n42-gateway.github.io/blue-green-deploy: group=blue=1,group=green=1
+    n42-gateway.github.io/blue-green-mode: pod
+    n42-gateway.github.io/ssl-redirect: "false"
   name: bluegreen
 spec:
   rules:
@@ -164,7 +162,7 @@ instead of single pods.
 
 ```
 $ kubectl annotate --overwrite ingress bluegreen \
-  haproxy-ingress.github.io/blue-green-mode=deploy
+  n42-gateway.github.io/blue-green-mode=deploy
 ```
 
 * BG Mode: deploy
@@ -184,7 +182,7 @@ Changing now the balance to 1/3 blue and 2/3 green:
 
 ```
 $ kubectl annotate --overwrite ingress bluegreen \
-  haproxy-ingress.github.io/blue-green-deploy=group=blue=1,group=green=2
+  n42-gateway.github.io/blue-green-deploy=group=blue=1,group=green=2
 ```
 
 * BG Mode: deploy
@@ -229,7 +227,7 @@ After that, add the following annotation:
 
 ```
 $ kubectl annotate --overwrite ingress bluegreen \
-  haproxy-ingress.github.io/blue-green-header=x-server:group
+  n42-gateway.github.io/blue-green-header=x-server:group
 ```
 
 Create (or update) the `hareq` alias. Change `IP` to your N42 Gateway controller
@@ -271,7 +269,7 @@ Choose an invalid group, the configured blue/green balance will be used:
 
 ```
 $ kubectl annotate --overwrite ingress bluegreen \
-  haproxy-ingress.github.io/blue-green-deploy=group=blue=1,group=green=3
+  n42-gateway.github.io/blue-green-deploy=group=blue=1,group=green=3
 $ GROUP=invalid
 $ hareq
 Running 100 requests...

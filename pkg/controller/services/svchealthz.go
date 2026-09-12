@@ -14,7 +14,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
+	"github.com/n42-gateway/n42-gateway/pkg/controller/config"
 )
 
 func initSvcHealthz(ctx context.Context, cfg *config.Config, metrics *metrics, acmeCheck svcAcmeCheckFnc) (*svcHealthz, error) {
@@ -72,7 +72,7 @@ func (s *svcHealthz) createRootHealthzHandler() http.HandlerFunc {
 	page := `/acme/check (only POST): starts a new check for certificates that need to be issued
 /build : build info
 /debug/pprof/ : pprof index` + pprofDisabled + `
-/metrics : HAProxy Ingress metrics in Prometheus format
+/metrics : N42 Gateway metrics in Prometheus format
 /stop : stops the controller process` + stopDisabled + `
 `
 

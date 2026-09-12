@@ -34,12 +34,12 @@ import (
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gwapischeme "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/scheme"
 
-	conv_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/helper_test"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/tracker"
-	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
-	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
-	types_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/types/helper_test"
+	conv_helper "github.com/n42-gateway/n42-gateway/pkg/converters/helper_test"
+	"github.com/n42-gateway/n42-gateway/pkg/converters/tracker"
+	convtypes "github.com/n42-gateway/n42-gateway/pkg/converters/types"
+	"github.com/n42-gateway/n42-gateway/pkg/haproxy"
+	hatypes "github.com/n42-gateway/n42-gateway/pkg/haproxy/types"
+	types_helper "github.com/n42-gateway/n42-gateway/pkg/types/helper_test"
 )
 
 type testCaseSync struct {
@@ -834,7 +834,7 @@ func TestGatewayClassStatus(t *testing.T) {
 	c.compareStatus("gatewayclass", gwcls, `
 conditions:
 - lastTransitionTime: "-"
-  message: Class accepted by HAProxy Ingress
+  message: Class accepted by N42 Gateway
   reason: Accepted
   status: "True"
   type: Accepted
@@ -854,7 +854,7 @@ func TestGatewayStatus(t *testing.T) {
 			expStatus: `
 conditions:
 - lastTransitionTime: "-"
-  message: Gateway accepted by HAProxy Ingress
+  message: Gateway accepted by N42 Gateway
   reason: Accepted
   status: "True"
   type: Accepted
@@ -872,7 +872,7 @@ conditions:
 			expStatus: `
 conditions:
 - lastTransitionTime: "-"
-  message: Gateway accepted by HAProxy Ingress
+  message: Gateway accepted by N42 Gateway
   reason: Accepted
   status: "True"
   type: Accepted
@@ -917,7 +917,7 @@ listeners:
 			expStatus: `
 conditions:
 - lastTransitionTime: "-"
-  message: Gateway accepted by HAProxy Ingress
+  message: Gateway accepted by N42 Gateway
   reason: Accepted
   status: "True"
   type: Accepted
@@ -961,7 +961,7 @@ WARN None of the configured route kinds are supported on Gateway 'default/gatewa
 			expStatus: `
 conditions:
 - lastTransitionTime: "-"
-  message: Gateway accepted by HAProxy Ingress
+  message: Gateway accepted by N42 Gateway
   reason: Accepted
   status: "True"
   type: Accepted
@@ -1318,7 +1318,7 @@ kind: GatewayClass
 metadata:
   name: ` + name + `
 spec:
-  controllerName: haproxy-ingress.github.io/controller`).(*gatewayv1.GatewayClass)
+  controllerName: n42-gateway.github.io/controller`).(*gatewayv1.GatewayClass)
 	c.cache.GatewayClassMap[gatewayv1.ObjectName(gwcls.Name)] = gwcls
 	return gwcls
 }

@@ -17,9 +17,9 @@ limitations under the License.
 package annotations
 
 import (
-	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
-	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
+	ingtypes "github.com/n42-gateway/n42-gateway/pkg/converters/ingress/types"
+	convtypes "github.com/n42-gateway/n42-gateway/pkg/converters/types"
+	"github.com/n42-gateway/n42-gateway/pkg/haproxy/types"
 )
 
 func (c *updater) buildHostAuthExternal(d *hostData) {

@@ -5,7 +5,7 @@ metadata:
   labels:
     run: coraza-spoa
   name: coraza-spoa
-  namespace: ingress-controller
+  namespace: n42-gateway-system
 spec:
   replicas: 3
   selector:
@@ -54,7 +54,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: coraza-config
-  namespace: ingress-controller
+  namespace: n42-gateway-system
 data:
   # Check the official documentation: https://github.com/corazawaf/coraza-spoa
   config.yaml: |

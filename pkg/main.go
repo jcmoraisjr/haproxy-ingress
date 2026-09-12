@@ -21,12 +21,12 @@ import (
 	"log"
 	"os"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/launch"
+	"github.com/n42-gateway/n42-gateway/pkg/controller/config"
+	"github.com/n42-gateway/n42-gateway/pkg/controller/launch"
 )
 
 func main() {
-	fs := flag.NewFlagSet("HAProxy Ingress", flag.ExitOnError)
+	fs := flag.NewFlagSet("N42 Gateway", flag.ExitOnError)
 	opt := config.NewOptions()
 	opt.AddFlags(fs)
 	err := fs.Parse(os.Args[1:])

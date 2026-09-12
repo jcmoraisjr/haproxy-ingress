@@ -37,10 +37,10 @@ import (
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/services"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/tracker"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
+	"github.com/n42-gateway/n42-gateway/pkg/controller/config"
+	"github.com/n42-gateway/n42-gateway/pkg/controller/services"
+	"github.com/n42-gateway/n42-gateway/pkg/converters/tracker"
+	"github.com/n42-gateway/n42-gateway/pkg/converters/types"
 )
 
 func createWatchers(ctx context.Context, cfg *config.Config, val services.IsValidResource) *watchers {
