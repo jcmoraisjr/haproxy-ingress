@@ -39,7 +39,7 @@ deployment.apps/modsecurity-spoa created
 Check if the agent is up and running:
 
 ```
-$ kubectl -n ingress-controller get deployment modsecurity-spoa
+$ kubectl -n n42-gateway-system get deployment modsecurity-spoa
 NAME                     READY     UP-TO-DATE   AVAILABLE  AGE
 modsecurity-spoa         3/3       3            3          7s
 ```
@@ -47,13 +47,13 @@ modsecurity-spoa         3/3       3            3          7s
 
 You can now create the service that provides a ClusterIP address for the HAProxy ConfigMap.
 ```
-$ kubectl -n ingress-controller expose deployment modsecurity-spoa --port=12345 --type=ClusterIP
+$ kubectl -n n42-gateway-system expose deployment modsecurity-spoa --port=12345 --type=ClusterIP
 service/modsecurity-spoa exposed
 ```
 
 Once the service is created, you can obtain the ClusterIP address to be used later in the ConfigMap.
 ```
-$ kubectl -n ingress-controller get service modsecurity-spoa
+$ kubectl -n n42-gateway-system get service modsecurity-spoa
 NAME                     TYPE       CLUSTERIP        EXTERNAL-IP  PORT(S)     AGE
 modsecurity-spoa         ClusterIP  172.20.216.246   <none>       12345/TCP   7m
 ```
@@ -62,7 +62,7 @@ modsecurity-spoa         ClusterIP  172.20.216.246   <none>       12345/TCP   7m
 
 Add the ConfigMap key `modsecurity-endpoints` with a comma-separated list of `IP:port`
 of the ModSecurity agent server(s). The default port number of the agent is `12345`.
-A `kubectl -n ingress-controller edit configmap n42-gateway` should work.
+A `kubectl -n n42-gateway-system edit configmap n42-gateway` should work.
 
 Example of a ConfigMap content if the ModSecurity service has a ClusterIP of `172.20.216.246`:
 
@@ -139,14 +139,14 @@ Request forbidden by administrative rules.
 Check the agent logs:
 
 ```
-$ kubectl -n ingress-controller get pod -lrun=modsecurity-spoa
+$ kubectl -n n42-gateway-system get pod -lrun=modsecurity-spoa
 NAME                                READY   STATUS    RESTARTS   AGE
 modsecurity-spoa-6f757ffd88-9qt2f   1/1     Running   0          11m
 modsecurity-spoa-6f757ffd88-vwtzr   1/1     Running   0          11m
 modsecurity-spoa-6f757ffd88-q4rvm   1/1     Running   0          11m
 ...
 
-$ kubectl -n ingress-controller logs --tail=10 modsecurity-spoa-6f757ffd88-9qt2f
+$ kubectl -n n42-gateway-system logs --tail=10 modsecurity-spoa-6f757ffd88-9qt2f
 ...
 1527464273.942819 [00] [client 127.0.0.1] ModSecurity: Access denied with code 403 (phase 2). Matche
 d phrase "etc/passwd" at ARGS:p. [file "/etc/modsecurity/owasp-modsecurity-crs/rules/REQUEST-930-APP
@@ -177,7 +177,7 @@ deployment "modsecurity-spoa" configured
 Now the ModSecurity agent pods will have two containers to get logs from: one for the traditional ModSecurity logs and one for the logs written to the AuditLog file.
 
 ```
-$ kubectl -n ingress-controller get pod -lrun=modsecurity-spoa
+$ kubectl -n n42-gateway-system get pod -lrun=modsecurity-spoa
 NAME                                READY   STATUS    RESTARTS   AGE
 modsecurity-spoa-6596c6b444-cht27   2/2     Running   0          14m
 modsecurity-spoa-6596c6b444-kw2tr   2/2     Running   0          14m

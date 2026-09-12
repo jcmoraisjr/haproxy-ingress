@@ -94,7 +94,7 @@ Now install or upgrade the chart:
 ```
 helm upgrade n42 n42/n42-gateway\
   --install\
-  --create-namespace --namespace ingress-controller\
+  --create-namespace --namespace n42-gateway-system\
   -f n42-gateway-values.yaml
 ```
 

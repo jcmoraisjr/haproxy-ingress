@@ -744,7 +744,7 @@ func TestSyncIngressClass(t *testing.T) {
 				Kind: "ConfigMap",
 				Name: "none",
 			},
-			logging: `WARN error reading ConfigMap on IngressClass 'haproxy-config': configmap not found: ingress-controller/none`,
+			logging: `WARN error reading ConfigMap on IngressClass 'haproxy-config': configmap not found: n42-gateway-system/none`,
 		},
 		// 3
 		{
@@ -757,7 +757,7 @@ func TestSyncIngressClass(t *testing.T) {
 	}
 	for _, test := range testCases {
 		c := setup(t)
-		c.cache.ConfigMapList = map[string]*api.ConfigMap{"ingress-controller/config": {}}
+		c.cache.ConfigMapList = map[string]*api.ConfigMap{"n42-gateway-system/config": {}}
 		c.cache.SecretTLSPath["system/default"] = "/tls/tls-default.pem"
 		conv := c.createConverter()
 		ingClass := networking.IngressClass{

@@ -5,7 +5,7 @@ metadata:
   labels:
     run: modsecurity-spoa
   name: modsecurity-spoa
-  namespace: ingress-controller
+  namespace: n42-gateway-system
 spec:
   selector:
     matchLabels:

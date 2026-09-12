@@ -80,7 +80,7 @@ N42 Gateway uses [Helm](https://helm.sh) chart to install and configure the cont
     ```
     $ helm upgrade n42 n42/n42-gateway\
       --install\
-      --create-namespace --namespace ingress-controller\
+      --create-namespace --namespace n42-gateway-system\
       --version 0.17.0-alpha.2 --devel\
       -f n42-gateway-values.yaml
     ```
@@ -98,7 +98,7 @@ N42 Gateway uses [Helm](https://helm.sh) chart to install and configure the cont
 The controller should be running in a few seconds. There are some important customizations made in the example above:
 
 * `--version`: a good practice, this will ensure that you'll have the same version installed even if a new release issued.
-* `--namespace`: we're instructing helm to install N42 Gateway in the `ingress-controller` namespace. This namespace will be created if it does not exist yet. The default behavior, if namespace is not provided, is to deploy the controller in the kubectl's current namespace.
+* `--namespace`: we're instructing helm to install N42 Gateway in the `n42-gateway-system` namespace. This namespace will be created if it does not exist yet. The default behavior, if namespace is not provided, is to deploy the controller in the kubectl's current namespace.
 * `ingressClassResource` and `gatewayClassResource`: This causes the helm chart to apply an [IngressClass](https://kubernetes.io/docs/concepts/services-networking/ingress/#ingress-class) and/or a [GatewayClass](https://gateway-api.sigs.k8s.io/reference/api-types/gatewayclass/) to your cluster. Classes are how N42 Gateway knows which of your Ingresses or Gateway resources it should control.
 * `kind`, `daemonset.useHostPort` and `service.type`, only used when service loadbalancer should not be used: disables service load balancer and exposes HAProxy via host port on all cluster nodes.
 * `nodeSelector`, only used when kind is DaemonSet: it instruct N42 Gateway to only run in the selected nodes, if you remove this configuration, N42 Gateway will run on all nodes. Any key and value works, provided that the Helm configuration matches the label applied to the cluster nodes.

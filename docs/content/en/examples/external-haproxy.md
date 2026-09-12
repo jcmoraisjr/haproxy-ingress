@@ -131,14 +131,14 @@ Install or upgrade N42 Gateway using the `n42-gateway-values.yaml` parameters:
 
 ```
 $ helm upgrade n42 n42/n42-gateway\
-  --install --create-namespace --namespace=ingress-controller\
+  --install --create-namespace --namespace=n42-gateway-system\
   -f n42-gateway-values.yaml
 ```
 
 Check if the controller successfully starts or restarts:
 
 ```
-$ kubectl --namespace ingress-controller get pod -w
+$ kubectl --namespace n42-gateway-system get pod -w
 ```
 
 ## Test
@@ -146,17 +146,17 @@ $ kubectl --namespace ingress-controller get pod -w
 Open two distinct terminals to follow `n42-gateway` and `haproxy` logs:
 
 ```
-$ kubectl --namespace ingress-controller get pod
+$ kubectl --namespace n42-gateway-system get pod
 NAME                           READY   STATUS    RESTARTS   AGE
 n42-gateway-6f8848d6fb-gxmrk   2/2     Running   0          13s
 
-$ kubectl --namespace ingress-controller logs -f n42-gateway-6f8848d6fb-gxmrk -c n42-gateway
+$ kubectl --namespace n42-gateway-system logs -f n42-gateway-6f8848d6fb-gxmrk -c n42-gateway
 ```
 
 and
 
 ```
-$ kubectl --namespace ingress-controller logs -f n42-gateway-6f8848d6fb-gxmrk -c haproxy
+$ kubectl --namespace n42-gateway-system logs -f n42-gateway-6f8848d6fb-gxmrk -c haproxy
 ```
 
 Do some `curl` to any exposed application, or just use the controller or service loadbalancer

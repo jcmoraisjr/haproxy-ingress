@@ -87,7 +87,7 @@ data:
 kind: ConfigMap
 metadata:
   name: n42-gateway
-  namespace: ingress-controller
+  namespace: n42-gateway-system
 ```
 
 ### Annotation
@@ -153,7 +153,7 @@ data:
 kind: ConfigMap
 metadata:
   name: my-options
-  namespace: ingress-controller
+  namespace: n42-gateway-system
 ```
 
 ```yaml
@@ -1797,7 +1797,7 @@ data:
 kind: ConfigMap
 metadata:
   name: n42-gateway
-  namespace: ingress-controller
+  namespace: n42-gateway-system
 ```
 
 **Frontend usage**
@@ -1822,7 +1822,7 @@ data:
 kind: ConfigMap
 metadata:
   name: n42-gateway
-  namespace: ingress-controller
+  namespace: n42-gateway-system
 ```
 
 Ingress resource adding its spec and frontend related annotations to `Front8` frontends pair:

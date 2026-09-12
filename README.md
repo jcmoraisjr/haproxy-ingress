@@ -78,7 +78,7 @@ Deploy local image using Helm:
 ```
 helm repo add n42 https://n42-gateway.github.io/charts
 helm install n42 n42/n42-gateway\
-  --create-namespace --namespace=ingress-controller\
+  --create-namespace --namespace=n42-gateway-system\
   --set controller.image.repository=localhost/n42-gateway\
   --set controller.image.tag=latest\
   --set controller.image.pullPolicy=Never
